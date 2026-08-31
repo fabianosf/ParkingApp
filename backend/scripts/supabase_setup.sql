@@ -57,16 +57,19 @@ CREATE TABLE IF NOT EXISTS parking_config (
   atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS senha_provisoria BOOLEAN NOT NULL DEFAULT FALSE;
+
 INSERT INTO parking_config (capacidade_maxima)
 SELECT 50
 WHERE NOT EXISTS (SELECT 1 FROM parking_config);
 
 -- Admin: CPF 05721845732 / senha 260281xx
-INSERT INTO users (nome, cpf, email, senha_hash, role)
+INSERT INTO users (nome, cpf, email, senha_hash, role, senha_provisoria)
 SELECT
   'Administrador',
   '05721845732',
   'admin@parking.local',
   '$2b$12$0P6MUKhkw7m2IIBBTLZoUe8vzOvv3hw8zRo4OrCj2uMCKojzgAlDy',
-  'ADMIN'
+  'ADMIN',
+  FALSE
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE cpf = '05721845732');

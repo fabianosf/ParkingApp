@@ -11,6 +11,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import ForcedPasswordChangeScreen from '../screens/ForcedPasswordChangeScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import AdminVehiclesScreen from '../screens/AdminVehiclesScreen';
 import AdminHistoryScreen from '../screens/AdminHistoryScreen';
@@ -75,7 +76,7 @@ function DriverNavigator() {
 }
 
 export default function AppNavigator() {
-  const { user, isLoading, isAuthenticated } = useAuthStore();
+  const { user, isLoading, isAuthenticated, mustChangePassword } = useAuthStore();
 
   if (isLoading) {
     return <LoadingView />;
@@ -85,6 +86,8 @@ export default function AppNavigator() {
     <NavigationContainer>
       {!isAuthenticated ? (
         <AuthNavigator />
+      ) : mustChangePassword ? (
+        <ForcedPasswordChangeScreen />
       ) : user?.role === 'ADMIN' ? (
         <AdminNavigator />
       ) : (

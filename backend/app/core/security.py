@@ -19,10 +19,10 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(data: dict[str, Any]) -> str:
+def create_access_token(data: dict[str, Any], token_type: str = "access") -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "type": token_type})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -78,15 +78,35 @@ def normalize_placa(placa: str) -> str:
     return placa.upper().replace("-", "").replace(" ", "")
 
 
-def validate_password_strength(password: str) -> bool:
-    if len(password) < 8:
-        return False
+DEFAULT_PROVISIONAL_PASSWORD = "12345"
+SPECIAL_CHARS = r"!@#$%^&*()\-_+= "
+
+
+def password_policy_errors(password: str, current_password: str | None = None) -> list[str]:
+    """Retorna lista de erros específicos da política de senha."""
+    errors: list[str] = []
+    if len(password) < 6:
+        errors.append("Senha deve ter no mínimo 6 caracteres")
     if not re.search(r"[A-Z]", password):
-        return False
+        errors.append("Senha deve conter ao menos 1 letra maiúscula")
     if not re.search(r"[a-z]", password):
-        return False
+        errors.append("Senha deve conter ao menos 1 letra minúscula")
     if not re.search(r"[0-9]", password):
-        return False
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-        return False
-    return True
+        errors.append("Senha deve conter ao menos 1 número")
+    if not re.search(r"[!@#$%^&*()\-_+=]", password):
+        errors.append("Senha deve conter ao menos 1 caractere especial (!@#$%^&*()-_+=)")
+    if password == DEFAULT_PROVISIONAL_PASSWORD:
+        errors.append("Nova senha não pode ser a senha provisória padrão")
+    if current_password is not None and password == current_password:
+        errors.append("Nova senha não pode ser igual à senha atual")
+    return errors
+
+
+def validate_password_strength(password: str, current_password: str | None = None) -> bool:
+    return len(password_policy_errors(password, current_password)) == 0
+
+
+def assert_password_policy(password: str, current_password: str | None = None) -> None:
+    errors = password_policy_errors(password, current_password)
+    if errors:
+        raise ValueError("; ".join(errors))

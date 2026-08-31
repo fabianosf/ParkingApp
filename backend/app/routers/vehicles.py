@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user, require_role
+from app.dependencies.auth import get_current_user_full_access, require_role
 from app.models.parking_record import ParkingRecord, ParkingStatus
 from app.models.user import User, UserRole
 from app.models.vehicle import Vehicle
@@ -31,7 +31,7 @@ def _vehicle_response(vehicle: Vehicle) -> VehicleResponse:
 def list_vehicles(
     filtro: str | None = Query(None, description="Filtrar por placa, modelo ou proprietário"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_full_access),
 ):
     query = db.query(Vehicle).options(joinedload(Vehicle.owner))
     if current_user.role == UserRole.MOTORISTA:
@@ -62,7 +62,7 @@ def autocomplete_placa(
 def get_vehicle(
     vehicle_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_full_access),
 ):
     vehicle = db.query(Vehicle).options(joinedload(Vehicle.owner)).filter(Vehicle.id == vehicle_id).first()
     if vehicle is None:

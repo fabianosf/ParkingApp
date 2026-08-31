@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.core.seed import run_seed
 from app.routers import auth, parking_config, parking_records, users, vehicles
@@ -33,6 +34,11 @@ app.include_router(users.router)
 app.include_router(vehicles.router)
 app.include_router(parking_records.router)
 app.include_router(parking_config.router)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")

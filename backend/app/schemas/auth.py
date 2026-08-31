@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.core.security import normalize_cpf, validate_cpf, validate_password_strength
+from app.core.security import assert_password_policy, normalize_cpf, validate_cpf
 
 
 class LoginRequest(BaseModel):
@@ -20,6 +20,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    must_change_password: bool = False
 
 
 class RefreshTokenRequest(BaseModel):
@@ -38,10 +39,25 @@ class ResetPasswordRequest(BaseModel):
     @field_validator("nova_senha")
     @classmethod
     def senha_forte(cls, v: str) -> str:
-        if not validate_password_strength(v):
-            raise ValueError(
-                "Senha deve ter no mínimo 8 caracteres, incluindo maiúscula, minúscula, número e símbolo"
-            )
+        assert_password_policy(v)
+        return v
+
+    @field_validator("confirmar_senha")
+    @classmethod
+    def senhas_iguais(cls, v: str, info) -> str:
+        if "nova_senha" in info.data and v != info.data["nova_senha"]:
+            raise ValueError("Senhas não conferem")
+        return v
+
+
+class FirstAccessPasswordRequest(BaseModel):
+    nova_senha: str
+    confirmar_senha: str
+
+    @field_validator("nova_senha")
+    @classmethod
+    def senha_forte(cls, v: str) -> str:
+        assert_password_policy(v)
         return v
 
     @field_validator("confirmar_senha")

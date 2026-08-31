@@ -6,6 +6,7 @@ export interface User {
   cpf_mascarado: string;
   email: string;
   role: UserRole;
+  senha_provisoria?: boolean;
   criado_em: string;
 }
 

@@ -10,10 +10,10 @@ import {
   MessageText,
   ScreenHeader,
 } from '../components/UI';
+import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import { api, getErrorMessage } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useLayoutStyles } from '../store/useThemeStore';
-import { validatePassword } from '../utils/validation';
 
 export default function ProfileScreen() {
   const layout = useLayoutStyles();
@@ -25,12 +25,18 @@ export default function ProfileScreen() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const canSubmit =
+    !!senhaAtual &&
+    isChecklistComplete(novaSenha) &&
+    novaSenha === confirmar &&
+    novaSenha !== senhaAtual &&
+    !loading;
+
   const handleChangePassword = async () => {
     setError('');
     setMessage('');
-    if (!validatePassword(novaSenha)) {
-      return setError('Senha deve ter 8+ caracteres, maiúscula, minúscula, número e símbolo');
-    }
+    if (!isChecklistComplete(novaSenha)) return setError('Senha não atende à política');
+    if (novaSenha === senhaAtual) return setError('Nova senha não pode ser igual à senha atual');
     if (novaSenha !== confirmar) return setError('Senhas não conferem');
 
     setLoading(true);
@@ -93,8 +99,21 @@ export default function ProfileScreen() {
       {error ? <MessageText text={error} type="error" /> : null}
       {message ? <MessageText text={message} type="success" /> : null}
 
-      <AppInput label="Senha atual" placeholder="Senha atual" value={senhaAtual} onChangeText={setSenhaAtual} secureTextEntry />
-      <AppInput label="Nova senha" placeholder="Nova senha" value={novaSenha} onChangeText={setNovaSenha} secureTextEntry />
+      <AppInput
+        label="Senha atual"
+        placeholder="Senha atual"
+        value={senhaAtual}
+        onChangeText={setSenhaAtual}
+        secureTextEntry
+      />
+      <AppInput
+        label="Nova senha"
+        placeholder="Nova senha"
+        value={novaSenha}
+        onChangeText={setNovaSenha}
+        secureTextEntry
+      />
+      <PasswordChecklist password={novaSenha} />
       <AppInput
         label="Confirmar nova senha"
         placeholder="Confirmar nova senha"
@@ -103,7 +122,13 @@ export default function ProfileScreen() {
         secureTextEntry
       />
 
-      <AppButton title="Alterar Senha" onPress={handleChangePassword} variant="ghost" loading={loading} disabled={loading} />
+      <AppButton
+        title="Alterar Senha"
+        onPress={handleChangePassword}
+        variant="ghost"
+        loading={loading}
+        disabled={!canSubmit}
+      />
 
       <View style={layout.sectionSpaced}>
         <AppButtonGhostDanger title="Sair" onPress={handleLogout} />

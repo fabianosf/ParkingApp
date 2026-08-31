@@ -4,11 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import hash_password, verify_password
-from app.dependencies.auth import get_current_user, require_role
+from app.core.security import (
+    DEFAULT_PROVISIONAL_PASSWORD,
+    assert_password_policy,
+    hash_password,
+    verify_password,
+)
+from app.dependencies.auth import get_current_user_full_access, require_role
 from app.models.user import User, UserRole
 from app.schemas.auth import MessageResponse
-from app.schemas.user import ChangePasswordRequest, UserCreate, UserResponse, UserUpdate
+from app.schemas.user import AdminUserCreate, ChangePasswordRequest, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -33,7 +38,7 @@ def list_users(
 def get_user(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_full_access),
 ):
     if current_user.role != UserRole.ADMIN and current_user.id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão insuficiente")
@@ -46,7 +51,7 @@ def get_user(
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(
-    data: UserCreate,
+    data: AdminUserCreate,
     db: Session = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -59,8 +64,9 @@ def create_user(
         nome=data.nome,
         cpf=data.cpf,
         email=data.email,
-        senha_hash=hash_password(data.senha),
+        senha_hash=hash_password(DEFAULT_PROVISIONAL_PASSWORD),
         role=data.role,
+        senha_provisoria=True,
     )
     db.add(user)
     db.commit()
@@ -116,11 +122,17 @@ def delete_user(
 def change_password(
     data: ChangePasswordRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_full_access),
 ):
     if not verify_password(data.senha_atual, current_user.senha_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha atual incorreta")
 
+    try:
+        assert_password_policy(data.nova_senha, current_password=data.senha_atual)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
     current_user.senha_hash = hash_password(data.nova_senha)
+    current_user.senha_provisoria = False
     db.commit()
     return MessageResponse(message="Senha alterada com sucesso")

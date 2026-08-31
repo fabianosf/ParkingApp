@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.email import mail_config
 from app.core.security import (
+    assert_password_policy,
     create_access_token,
     create_refresh_token,
     decode_token,
@@ -20,6 +21,7 @@ from app.dependencies.auth import get_current_user
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
 from app.schemas.auth import (
+    FirstAccessPasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
@@ -45,6 +47,7 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
         email=data.email,
         senha_hash=hash_password(data.senha),
         role=data.role,
+        senha_provisoria=False,
     )
     db.add(user)
     db.commit()
@@ -59,9 +62,49 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="CPF ou senha incorretos")
 
     token_data = {"sub": str(user.id), "role": user.role.value}
+    must_change = bool(user.senha_provisoria)
+
+    # Token restrito só para troca no 1º acesso; token completo após troca
+    access_type = "password_change" if must_change else "access"
     return TokenResponse(
-        access_token=create_access_token(token_data),
+        access_token=create_access_token(token_data, token_type=access_type),
         refresh_token=create_refresh_token(token_data),
+        must_change_password=must_change,
+    )
+
+
+@router.post("/change-password-first-access", response_model=TokenResponse)
+def change_password_first_access(
+    data: FirstAccessPasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.senha_provisoria:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Usuário não possui senha provisória pendente",
+        )
+
+    try:
+        assert_password_policy(data.nova_senha)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if verify_password(data.nova_senha, current_user.senha_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nova senha não pode ser igual à senha atual",
+        )
+
+    current_user.senha_hash = hash_password(data.nova_senha)
+    current_user.senha_provisoria = False
+    db.commit()
+
+    token_data = {"sub": str(current_user.id), "role": current_user.role.value}
+    return TokenResponse(
+        access_token=create_access_token(token_data, token_type="access"),
+        refresh_token=create_refresh_token(token_data),
+        must_change_password=False,
     )
 
 
@@ -76,9 +119,12 @@ def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado")
 
     token_data = {"sub": str(user.id), "role": user.role.value}
+    must_change = bool(user.senha_provisoria)
+    access_type = "password_change" if must_change else "access"
     return TokenResponse(
-        access_token=create_access_token(token_data),
+        access_token=create_access_token(token_data, token_type=access_type),
         refresh_token=create_refresh_token(token_data),
+        must_change_password=must_change,
     )
 
 
@@ -128,7 +174,13 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     if user is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token inválido ou expirado")
 
+    try:
+        assert_password_policy(data.nova_senha)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
     user.senha_hash = hash_password(data.nova_senha)
+    user.senha_provisoria = False
     reset_token.usado = True
     db.commit()
     return MessageResponse(message="Senha redefinida com sucesso")

@@ -9,8 +9,8 @@ import {
   ScreenContainer,
   ScreenHeader,
 } from '../components/UI';
+import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import { api, getErrorMessage } from '../api/client';
-import { validatePassword } from '../utils/validation';
 import { AuthStackParamList } from '../navigation/types';
 
 type Props = {
@@ -25,12 +25,13 @@ export default function ResetPasswordScreen({ navigation }: Props) {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const canSubmit =
+    !!token.trim() && isChecklistComplete(novaSenha) && novaSenha === confirmar && !loading;
+
   const handleSubmit = async () => {
     setError('');
     if (!token.trim()) return setError('Informe o token');
-    if (!validatePassword(novaSenha)) {
-      return setError('Senha deve ter 8+ caracteres, maiúscula, minúscula, número e símbolo');
-    }
+    if (!isChecklistComplete(novaSenha)) return setError('Senha não atende à política');
     if (novaSenha !== confirmar) return setError('Senhas não conferem');
 
     setLoading(true);
@@ -57,7 +58,14 @@ export default function ResetPasswordScreen({ navigation }: Props) {
       {message ? <MessageText text={message} type="success" /> : null}
 
       <AppInput label="Token" placeholder="Token" value={token} onChangeText={setToken} />
-      <AppInput label="Nova senha" placeholder="Nova senha" value={novaSenha} onChangeText={setNovaSenha} secureTextEntry />
+      <AppInput
+        label="Nova senha"
+        placeholder="Nova senha"
+        value={novaSenha}
+        onChangeText={setNovaSenha}
+        secureTextEntry
+      />
+      <PasswordChecklist password={novaSenha} />
       <AppInput
         label="Confirmar nova senha"
         placeholder="Confirmar nova senha"
@@ -66,7 +74,13 @@ export default function ResetPasswordScreen({ navigation }: Props) {
         secureTextEntry
       />
 
-      <AppButton title="Redefinir Senha" onPress={handleSubmit} variant="primary" loading={loading} disabled={loading} />
+      <AppButton
+        title="Redefinir Senha"
+        onPress={handleSubmit}
+        variant="primary"
+        loading={loading}
+        disabled={!canSubmit}
+      />
 
       <LinkButton title="Voltar ao login" onPress={() => navigation.navigate('Login')} />
     </ScreenContainer>

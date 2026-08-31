@@ -3,11 +3,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.core.security import mask_cpf, normalize_placa, validate_cpf, validate_password_strength, validate_placa
+from app.core.security import assert_password_policy, mask_cpf, validate_cpf
 from app.models.user import UserRole
 
 
 class UserCreate(BaseModel):
+    """Cadastro público (self-service) — exige senha forte."""
+
     nome: str
     cpf: str
     email: EmailStr
@@ -25,10 +27,7 @@ class UserCreate(BaseModel):
     @field_validator("senha")
     @classmethod
     def senha_forte(cls, v: str) -> str:
-        if not validate_password_strength(v):
-            raise ValueError(
-                "Senha deve ter no mínimo 8 caracteres, incluindo maiúscula, minúscula, número e símbolo"
-            )
+        assert_password_policy(v)
         return v
 
     @field_validator("confirmar_senha")
@@ -37,6 +36,22 @@ class UserCreate(BaseModel):
         if "senha" in info.data and v != info.data["senha"]:
             raise ValueError("Senhas não conferem")
         return v
+
+
+class AdminUserCreate(BaseModel):
+    """Admin cadastra colaborador — senha provisória automática (12345)."""
+
+    nome: str
+    cpf: str
+    email: EmailStr
+    role: UserRole = UserRole.MOTORISTA
+
+    @field_validator("cpf")
+    @classmethod
+    def cpf_valido(cls, v: str) -> str:
+        if not validate_cpf(v):
+            raise ValueError("CPF inválido")
+        return "".join(filter(str.isdigit, v))
 
 
 class UserUpdate(BaseModel):
@@ -51,6 +66,7 @@ class UserResponse(BaseModel):
     cpf_mascarado: str
     email: EmailStr
     role: UserRole
+    senha_provisoria: bool
     criado_em: datetime
 
     model_config = {"from_attributes": True}
@@ -63,6 +79,7 @@ class UserResponse(BaseModel):
             cpf_mascarado=mask_cpf(user.cpf),
             email=user.email,
             role=user.role,
+            senha_provisoria=bool(getattr(user, "senha_provisoria", False)),
             criado_em=user.criado_em,
         )
 
@@ -75,10 +92,7 @@ class ChangePasswordRequest(BaseModel):
     @field_validator("nova_senha")
     @classmethod
     def senha_forte(cls, v: str) -> str:
-        if not validate_password_strength(v):
-            raise ValueError(
-                "Senha deve ter no mínimo 8 caracteres, incluindo maiúscula, minúscula, número e símbolo"
-            )
+        assert_password_policy(v)
         return v
 
     @field_validator("confirmar_senha")

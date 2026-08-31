@@ -4,7 +4,6 @@
     "slug": "parking-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "backgroundColor": "#1a5276"
@@ -16,6 +15,10 @@
       "adaptiveIcon": {
         "backgroundColor": "#1a5276"
       }
-    }
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
   }
 }

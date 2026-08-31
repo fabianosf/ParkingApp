@@ -11,9 +11,10 @@ import {
   ScreenContainer,
   ScreenHeader,
 } from '../components/UI';
+import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import { api, getErrorMessage } from '../api/client';
 import { useLayoutStyles } from '../store/useThemeStore';
-import { formatCPF, validateCPF, validatePassword } from '../utils/validation';
+import { formatCPF, validateCPF } from '../utils/validation';
 import { AuthStackParamList } from '../navigation/types';
 
 type Props = {
@@ -30,14 +31,20 @@ export default function RegisterScreen({ navigation }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const canSubmit =
+    !!nome.trim() &&
+    validateCPF(cpf) &&
+    !!email.trim() &&
+    isChecklistComplete(senha) &&
+    senha === confirmar &&
+    !loading;
+
   const handleRegister = async () => {
     setError('');
     if (!nome.trim()) return setError('Informe o nome');
     if (!validateCPF(cpf)) return setError('CPF inválido');
     if (!email.trim()) return setError('Informe o email');
-    if (!validatePassword(senha)) {
-      return setError('Senha deve ter 8+ caracteres, maiúscula, minúscula, número e símbolo');
-    }
+    if (!isChecklistComplete(senha)) return setError('Senha não atende à política');
     if (senha !== confirmar) return setError('Senhas não conferem');
 
     setLoading(true);
@@ -86,6 +93,7 @@ export default function RegisterScreen({ navigation }: Props) {
         autoCapitalize="none"
       />
       <AppInput label="Senha" placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
+      <PasswordChecklist password={senha} />
       <AppInput
         label="Confirmar senha"
         placeholder="Confirmar senha"
@@ -94,7 +102,13 @@ export default function RegisterScreen({ navigation }: Props) {
         secureTextEntry
       />
 
-      <AppButton title="Cadastrar" onPress={handleRegister} variant="accent" loading={loading} disabled={loading} />
+      <AppButton
+        title="Cadastrar"
+        onPress={handleRegister}
+        variant="accent"
+        loading={loading}
+        disabled={!canSubmit}
+      />
 
       <LinkButton title="Já tenho conta" onPress={() => navigation.navigate('Login')} />
     </ScreenContainer>

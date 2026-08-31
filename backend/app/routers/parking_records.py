@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user, require_role
+from app.dependencies.auth import get_current_user_full_access, require_role
 from app.models.parking_config import ParkingConfig
 from app.models.parking_record import ParkingRecord, ParkingStatus
 from app.models.user import User, UserRole
@@ -84,7 +84,7 @@ def list_records(
     data_inicio: datetime | None = Query(None),
     data_fim: datetime | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_full_access),
 ):
     query = db.query(ParkingRecord).options(
         joinedload(ParkingRecord.vehicle).joinedload(Vehicle.owner)

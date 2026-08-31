@@ -1,3 +1,30 @@
+export const PROVISIONAL_PASSWORD = '12345';
+
+export interface PasswordChecks {
+  minLength: boolean;
+  hasUpper: boolean;
+  hasLower: boolean;
+  hasNumber: boolean;
+  hasSpecial: boolean;
+  notProvisional: boolean;
+}
+
+export function getPasswordChecks(password: string): PasswordChecks {
+  return {
+    minLength: password.length >= 6,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[!@#$%^&*()\-_+=]/.test(password),
+    notProvisional: password !== PROVISIONAL_PASSWORD && password.length > 0,
+  };
+}
+
+export function isPasswordPolicyValid(password: string): boolean {
+  const c = getPasswordChecks(password);
+  return c.minLength && c.hasUpper && c.hasLower && c.hasNumber && c.hasSpecial && c.notProvisional;
+}
+
 export function validateCPF(cpf: string): boolean {
   const cleaned = cpf.replace(/\D/g, '');
   if (cleaned.length !== 11 || /^(\d)\1+$/.test(cleaned)) return false;
@@ -28,13 +55,9 @@ export function validatePlaca(placa: string): boolean {
   return /^[A-Z]{3}[0-9]{4}$/.test(cleaned) || /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(cleaned);
 }
 
+/** @deprecated use isPasswordPolicyValid */
 export function validatePassword(password: string): boolean {
-  if (password.length < 8) return false;
-  if (!/[A-Z]/.test(password)) return false;
-  if (!/[a-z]/.test(password)) return false;
-  if (!/[0-9]/.test(password)) return false;
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return false;
-  return true;
+  return isPasswordPolicyValid(password);
 }
 
 export function formatPlaca(value: string): string {
