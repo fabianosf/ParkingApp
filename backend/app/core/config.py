@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     ADMIN_NOME: str = "Administrador"
     ADMIN_EMAIL: str = "admin@parking.local"
 
+    CORS_ORIGINS: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:8081,http://127.0.0.1:8081"
+    )
+
     class Config:
         env_file = ".env"
 

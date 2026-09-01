@@ -64,7 +64,7 @@ class UserResponse(BaseModel):
     id: UUID
     nome: str
     cpf_mascarado: str
-    email: EmailStr
+    email: str
     role: UserRole
     senha_provisoria: bool
     criado_em: datetime
