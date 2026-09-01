@@ -4,6 +4,7 @@ import {
   AppButton,
   AppButtonGhostWarning,
   AppInput,
+  AppSelect,
   Card,
   LoadingView,
   MessageText,
@@ -11,10 +12,12 @@ import {
   ScreenHeader,
   VehicleRow,
 } from '../components/UI';
+import { appAlert, appConfirm } from '../store/useDialogStore';
 import { usePageFocus } from '../hooks/usePageFocus';
 import { api, getErrorMessage } from '../services/api';
 import { useLayoutStyles } from '../store/useThemeStore';
-import { User, Vehicle } from '../types';
+import { User, Vehicle, VehicleType } from '../types';
+import { VEHICLE_TYPE_OPTIONS, vehicleTypeLabel } from '../constants/vehicleTypes';
 import { formatPlaca, validatePlaca } from '../utils/validation';
 
 export default function AdminVeiculos() {
@@ -28,6 +31,7 @@ export default function AdminVeiculos() {
   const [placa, setPlaca] = useState('');
   const [modelo, setModelo] = useState('');
   const [cor, setCor] = useState('');
+  const [tipo, setTipo] = useState<VehicleType>('CARRO');
   const [ownerId, setOwnerId] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -56,6 +60,7 @@ export default function AdminVeiculos() {
     setPlaca('');
     setModelo('');
     setCor('');
+    setTipo('CARRO');
     setOwnerId(users[0]?.id ?? '');
     setError('');
     setModalVisible(true);
@@ -66,6 +71,7 @@ export default function AdminVeiculos() {
     setPlaca(v.placa);
     setModelo(v.modelo);
     setCor(v.cor);
+    setTipo(v.tipo);
     setOwnerId(v.owner_id);
     setError('');
     setModalVisible(true);
@@ -78,7 +84,13 @@ export default function AdminVeiculos() {
     setSaving(true);
     setError('');
     try {
-      const payload = { placa, modelo: modelo.trim(), cor: cor.trim(), owner_id: ownerId };
+      const payload = {
+        placa,
+        modelo: modelo.trim(),
+        cor: cor.trim(),
+        tipo,
+        owner_id: ownerId,
+      };
       if (editing) {
         await api.put(`/vehicles/${editing.id}`, payload);
       } else {
@@ -94,13 +106,19 @@ export default function AdminVeiculos() {
   };
 
   const handleDelete = (v: Vehicle) => {
-    if (!window.confirm(`Deseja excluir ${v.placa}?`)) return;
     void (async () => {
+      const ok = await appConfirm({
+        title: 'Excluir veículo',
+        message: `Deseja excluir ${v.placa}?`,
+        confirmLabel: 'Excluir',
+        variant: 'danger',
+      });
+      if (!ok) return;
       try {
         await api.delete(`/vehicles/${v.id}`);
         await loadData();
       } catch (err) {
-        window.alert(getErrorMessage(err));
+        await appAlert(getErrorMessage(err), 'Erro');
       }
     })();
   };
@@ -130,7 +148,7 @@ export default function AdminVeiculos() {
           <div key={item.id} style={layout.listItemGroup}>
             <VehicleRow
               placa={item.placa}
-              subtitle={`${item.modelo} - ${item.cor}`}
+              subtitle={`${vehicleTypeLabel(item.tipo)} · ${item.modelo} · ${item.cor}`}
               detail={`Proprietário: ${item.owner?.nome ?? '—'}`}
             />
             <div style={layout.rowActions}>
@@ -154,6 +172,12 @@ export default function AdminVeiculos() {
               onChange={(e) => setPlaca(formatPlaca(e.target.value))}
               autoCapitalize="characters"
               maxLength={7}
+            />
+            <AppSelect
+              label="Tipo de veículo"
+              value={tipo}
+              onChange={(v) => setTipo(v as VehicleType)}
+              options={VEHICLE_TYPE_OPTIONS}
             />
             <AppInput label="Modelo" placeholder="Modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} />
             <AppInput label="Cor" placeholder="Cor" value={cor} onChange={(e) => setCor(e.target.value)} />

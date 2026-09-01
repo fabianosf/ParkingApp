@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, field_validator
 
 from app.core.security import normalize_placa, validate_placa
+from app.models.vehicle import VehicleType
 from app.schemas.user import UserResponse
 
 
@@ -11,7 +12,22 @@ class VehicleCreate(BaseModel):
     placa: str
     modelo: str
     cor: str
+    tipo: VehicleType = VehicleType.CARRO
     owner_id: UUID
+
+    @field_validator("placa")
+    @classmethod
+    def placa_valida(cls, v: str) -> str:
+        if not validate_placa(v):
+            raise ValueError("Placa inválida. Use formato antigo (ABC1234) ou Mercosul (ABC1D23)")
+        return normalize_placa(v)
+
+
+class VehicleSelfCreate(BaseModel):
+    placa: str
+    modelo: str
+    cor: str
+    tipo: VehicleType = VehicleType.CARRO
 
     @field_validator("placa")
     @classmethod
@@ -25,6 +41,7 @@ class VehicleUpdate(BaseModel):
     placa: str | None = None
     modelo: str | None = None
     cor: str | None = None
+    tipo: VehicleType | None = None
     owner_id: UUID | None = None
 
     @field_validator("placa")
@@ -40,9 +57,11 @@ class VehicleResponse(BaseModel):
     placa: str
     modelo: str
     cor: str
+    tipo: VehicleType
     owner_id: UUID
     owner: UserResponse | None = None
     criado_em: datetime
+    excluido_em: datetime | None = None
 
     model_config = {"from_attributes": True}
 

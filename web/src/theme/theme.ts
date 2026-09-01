@@ -167,6 +167,14 @@ export function createLayoutStyles(theme: AppTheme): Record<string, CSSPropertie
       marginBottom: s.md,
       marginTop: 0,
     },
+    warningText: {
+      ...t.caption,
+      color: c.warning,
+      marginBottom: s.sm,
+      marginTop: 0,
+      textAlign: 'left',
+      width: '100%',
+    },
     link: {
       ...t.link,
       color: c.primaryLight,

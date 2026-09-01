@@ -28,7 +28,15 @@ class RefreshTokenRequest(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    cpf: str
+
+    @field_validator("cpf")
+    @classmethod
+    def cpf_valido(cls, v: str) -> str:
+        cpf = normalize_cpf(v)
+        if not validate_cpf(cpf):
+            raise ValueError("CPF inválido")
+        return cpf
 
 
 class ResetPasswordRequest(BaseModel):
@@ -70,3 +78,8 @@ class FirstAccessPasswordRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_token: str | None = None

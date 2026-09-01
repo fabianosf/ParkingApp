@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 
 import {
   AppButton,
@@ -9,29 +10,39 @@ import {
   ScreenContainer,
   ScreenHeader,
 } from '../components/UI';
-import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import { api, getErrorMessage } from '../api/client';
 import { AuthStackParamList } from '../navigation/types';
+import {
+  getPasswordPolicyMessage,
+  isPasswordPolicyValid,
+} from '../utils/validation';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
+  route: RouteProp<AuthStackParamList, 'ResetPassword'>;
 };
 
-export default function ResetPasswordScreen({ navigation }: Props) {
-  const [token, setToken] = useState('');
+export default function ResetPasswordScreen({ navigation, route }: Props) {
+  const token = route.params?.token ?? '';
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const senhaWarning =
+    novaSenha.length > 0 && !isPasswordPolicyValid(novaSenha) ? getPasswordPolicyMessage(novaSenha) : '';
+
   const canSubmit =
-    !!token.trim() && isChecklistComplete(novaSenha) && novaSenha === confirmar && !loading;
+    !!token.trim() &&
+    isPasswordPolicyValid(novaSenha) &&
+    novaSenha === confirmar &&
+    !loading;
 
   const handleSubmit = async () => {
     setError('');
-    if (!token.trim()) return setError('Informe o token');
-    if (!isChecklistComplete(novaSenha)) return setError('Senha não atende à política');
+    if (!token.trim()) return setError('Link inválido. Solicite a recuperação novamente.');
+    if (!isPasswordPolicyValid(novaSenha)) return setError(getPasswordPolicyMessage(novaSenha));
     if (novaSenha !== confirmar) return setError('Senhas não conferem');
 
     setLoading(true);
@@ -50,14 +61,26 @@ export default function ResetPasswordScreen({ navigation }: Props) {
     }
   };
 
+  if (!token.trim()) {
+    return (
+      <ScreenContainer keyboard>
+        <ScreenHeader title="Link inválido" subtitle="Solicite a recuperação de senha novamente." />
+        <LinkButton title="Recuperar senha" onPress={() => navigation.navigate('ForgotPassword')} />
+        <LinkButton title="Voltar ao login" onPress={() => navigation.navigate('Login')} />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer keyboard>
-      <ScreenHeader title="Nova Senha" subtitle="Informe o token recebido e defina uma nova senha" />
+      <ScreenHeader
+        title="Cadastrar nova senha"
+        subtitle="Sua senha anterior foi bloqueada. Defina uma nova conforme a política da empresa."
+      />
 
       {error ? <MessageText text={error} type="error" /> : null}
       {message ? <MessageText text={message} type="success" /> : null}
 
-      <AppInput label="Token" placeholder="Token" value={token} onChangeText={setToken} />
       <AppInput
         label="Nova senha"
         placeholder="Nova senha"
@@ -65,7 +88,14 @@ export default function ResetPasswordScreen({ navigation }: Props) {
         onChangeText={setNovaSenha}
         secureTextEntry
       />
-      <PasswordChecklist password={novaSenha} />
+      {senhaWarning ? (
+        <MessageText text={senhaWarning} type="warning" />
+      ) : novaSenha.length === 0 ? (
+        <MessageText
+          text="A senha deve ter: mínimo 6 caracteres, 1 maiúscula, 1 minúscula, 1 número, 1 caractere especial e não pode ser 12345."
+          type="warning"
+        />
+      ) : null}
       <AppInput
         label="Confirmar nova senha"
         placeholder="Confirmar nova senha"
@@ -75,7 +105,7 @@ export default function ResetPasswordScreen({ navigation }: Props) {
       />
 
       <AppButton
-        title="Redefinir Senha"
+        title="Salvar nova senha"
         onPress={handleSubmit}
         variant="primary"
         loading={loading}

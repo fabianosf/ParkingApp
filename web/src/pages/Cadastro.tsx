@@ -5,15 +5,16 @@ import {
   AppButton,
   AppInput,
   LinkButton,
-  LogoAvatar,
   MessageText,
-  ScreenContainer,
-  ScreenHeader,
 } from '../components/UI';
-import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import { api, getErrorMessage } from '../services/api';
 import { useLayoutStyles } from '../store/useThemeStore';
-import { formatCPF, validateCPF } from '../utils/validation';
+import {
+  formatCPF,
+  getPasswordPolicyMessage,
+  isPasswordPolicyValid,
+  validateCPF,
+} from '../utils/validation';
 
 export default function Cadastro() {
   const layout = useLayoutStyles();
@@ -30,16 +31,18 @@ export default function Cadastro() {
     !!nome.trim() &&
     validateCPF(cpf) &&
     !!email.trim() &&
-    isChecklistComplete(senha) &&
+    isPasswordPolicyValid(senha) &&
     senha === confirmar &&
     !loading;
+
+  const senhaWarning = senha.length > 0 && !isPasswordPolicyValid(senha) ? getPasswordPolicyMessage(senha) : '';
 
   const handleRegister = async () => {
     setError('');
     if (!nome.trim()) return setError('Informe o nome');
     if (!validateCPF(cpf)) return setError('CPF inválido');
     if (!email.trim()) return setError('Informe o email');
-    if (!isChecklistComplete(senha)) return setError('Senha não atende à política');
+    if (!isPasswordPolicyValid(senha)) return setError(getPasswordPolicyMessage(senha));
     if (senha !== confirmar) return setError('Senhas não conferem');
 
     setLoading(true);
@@ -60,51 +63,83 @@ export default function Cadastro() {
     }
   };
 
+  const centeredTitle = {
+    ...layout.title,
+    textAlign: 'center' as const,
+    width: '100%',
+  };
+
+  const centeredSubtitle = {
+    ...layout.subtitle,
+    textAlign: 'center' as const,
+    width: '100%',
+  };
+
   return (
-    <ScreenContainer keyboard>
-      <div style={layout.logoContainer}>
-        <LogoAvatar initials="EC" />
+    <div className="auth-screen">
+      <div className="auth-screen__card">
+        <div className="auth-screen__card-bg" aria-hidden="true" />
+        <div className="auth-screen__card-overlay" aria-hidden="true" />
+
+        <div className="auth-screen__content">
+          <div className="auth-screen__hero">
+            <h1 style={centeredTitle}>Cadastro</h1>
+            <p style={centeredSubtitle}>Crie sua conta de colaborador</p>
+          </div>
+
+          <div className="auth-screen__form auth-screen__form--long">
+            {error ? <MessageText text={error} type="error" /> : null}
+
+            <AppInput label="Nome completo" placeholder="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} />
+            <AppInput
+              label="CPF"
+              placeholder="CPF"
+              value={cpf}
+              onChange={(e) => setCpf(formatCPF(e.target.value))}
+              inputMode="numeric"
+              maxLength={14}
+            />
+            <AppInput
+              label="Email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+            />
+            <div className="auth-screen__password-group">
+              <AppInput
+                label="Senha"
+                placeholder="Senha"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                type="password"
+                compact
+              />
+              {senhaWarning ? <MessageText text={senhaWarning} type="warning" /> : null}
+              <AppInput
+                label="Confirmar senha"
+                placeholder="Confirmar senha"
+                value={confirmar}
+                onChange={(e) => setConfirmar(e.target.value)}
+                type="password"
+                compact
+              />
+            </div>
+
+            <AppButton
+              title="Cadastrar"
+              onPress={handleRegister}
+              variant="accent"
+              loading={loading}
+              disabled={!canSubmit}
+            />
+
+            <div className="auth-screen__links">
+              <LinkButton title="Já tenho conta" onPress={() => navigate('/login')} />
+            </div>
+          </div>
+        </div>
       </div>
-
-      <ScreenHeader title="Cadastro" subtitle="Crie sua conta de colaborador" />
-
-      {error ? <MessageText text={error} type="error" /> : null}
-
-      <AppInput label="Nome completo" placeholder="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} />
-      <AppInput
-        label="CPF"
-        placeholder="CPF"
-        value={cpf}
-        onChange={(e) => setCpf(formatCPF(e.target.value))}
-        inputMode="numeric"
-        maxLength={14}
-      />
-      <AppInput
-        label="Email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        type="email"
-      />
-      <AppInput label="Senha" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} type="password" />
-      <PasswordChecklist password={senha} />
-      <AppInput
-        label="Confirmar senha"
-        placeholder="Confirmar senha"
-        value={confirmar}
-        onChange={(e) => setConfirmar(e.target.value)}
-        type="password"
-      />
-
-      <AppButton
-        title="Cadastrar"
-        onPress={handleRegister}
-        variant="accent"
-        loading={loading}
-        disabled={!canSubmit}
-      />
-
-      <LinkButton title="Já tenho conta" onPress={() => navigate('/login')} />
-    </ScreenContainer>
+    </div>
   );
 }

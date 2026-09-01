@@ -14,28 +14,34 @@ const LABELS: { key: keyof ReturnType<typeof getPasswordChecks>; label: string }
   { key: 'notProvisional', label: 'Diferente de 12345' },
 ];
 
-function createStyles(theme: AppTheme): Record<string, CSSProperties> {
+function createStyles(theme: AppTheme, compact?: boolean): Record<string, CSSProperties> {
   const { colors: c, spacing: s, typography: t } = theme;
   return {
-    box: { marginBottom: s.md, width: '100%' },
+    box: {
+      marginTop: compact ? -4 : 0,
+      marginBottom: compact ? s.xs : s.md,
+      width: '100%',
+    },
     row: { display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: s.xs },
+    rowLast: { marginBottom: 0 },
     mark: { ...t.captionBold, width: 18, margin: 0 },
     labelOk: { ...t.caption, color: c.accent, margin: 0 },
     labelFail: { ...t.caption, color: c.textMuted, margin: 0 },
   };
 }
 
-export function PasswordChecklist({ password }: { password: string }) {
+export function PasswordChecklist({ password, compact = false }: { password: string; compact?: boolean }) {
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, compact), [theme, compact]);
   const checks = getPasswordChecks(password);
 
   return (
     <div style={styles.box}>
-      {LABELS.map(({ key, label }) => {
+      {LABELS.map(({ key, label }, index) => {
         const ok = checks[key];
+        const isLast = index === LABELS.length - 1;
         return (
-          <div key={key} style={styles.row}>
+          <div key={key} style={{ ...styles.row, ...(isLast ? styles.rowLast : {}) }}>
             <span style={{ ...styles.mark, color: ok ? theme.colors.accent : theme.colors.textMuted }}>
               {ok ? '✓' : '✗'}
             </span>

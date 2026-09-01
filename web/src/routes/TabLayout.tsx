@@ -20,7 +20,7 @@ export function TabLayout({ tabs }: TabLayoutProps) {
       <main className="app-main">
         <Outlet />
       </main>
-      <nav style={layout.tabBar}>
+        <nav style={layout.tabBar}>
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
@@ -48,6 +48,5 @@ export const adminTabs: TabItem[] = [
 
 export const driverTabs: TabItem[] = [
   { to: '/motorista/veiculo', label: 'Meu Veículo' },
-  { to: '/motorista/historico', label: 'Histórico' },
   { to: '/motorista/perfil', label: 'Perfil' },
 ];

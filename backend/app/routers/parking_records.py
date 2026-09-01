@@ -40,9 +40,11 @@ def _record_response(record: ParkingRecord) -> ParkingRecordResponse:
             placa=record.vehicle.placa,
             modelo=record.vehicle.modelo,
             cor=record.vehicle.cor,
+            tipo=record.vehicle.tipo,
             owner_id=record.vehicle.owner_id,
             owner=UserResponse.from_user(record.vehicle.owner) if record.vehicle.owner else None,
             criado_em=record.vehicle.criado_em,
+            excluido_em=record.vehicle.excluido_em,
         )
     return ParkingRecordResponse(
         id=record.id,
@@ -81,17 +83,30 @@ def get_dashboard(
 @router.get("/", response_model=list[ParkingRecordResponse])
 def list_records(
     vehicle_id: UUID | None = Query(None),
+    owner_id: UUID | None = Query(None),
     data_inicio: datetime | None = Query(None),
     data_fim: datetime | None = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_full_access),
 ):
+    if current_user.role == UserRole.MOTORISTA:
+        query = (
+            db.query(ParkingRecord)
+            .options(joinedload(ParkingRecord.vehicle).joinedload(Vehicle.owner))
+            .join(Vehicle)
+            .filter(Vehicle.owner_id == current_user.id, ParkingRecord.status == ParkingStatus.NO_PATIO)
+        )
+        if vehicle_id:
+            query = query.filter(ParkingRecord.vehicle_id == vehicle_id)
+        records = query.order_by(ParkingRecord.data_entrada.desc()).all()
+        return [_record_response(r) for r in records]
+
     query = db.query(ParkingRecord).options(
         joinedload(ParkingRecord.vehicle).joinedload(Vehicle.owner)
-    )
+    ).join(Vehicle)
 
-    if current_user.role == UserRole.MOTORISTA:
-        query = query.join(Vehicle).filter(Vehicle.owner_id == current_user.id)
+    if owner_id:
+        query = query.filter(Vehicle.owner_id == owner_id)
 
     if vehicle_id:
         query = query.filter(ParkingRecord.vehicle_id == vehicle_id)
@@ -110,7 +125,7 @@ def register_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    vehicle = db.query(Vehicle).filter(Vehicle.id == data.vehicle_id).first()
+    vehicle = db.query(Vehicle).filter(Vehicle.id == data.vehicle_id, Vehicle.excluido_em.is_(None)).first()
     if vehicle is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado")
 

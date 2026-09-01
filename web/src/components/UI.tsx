@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
 
 import { useLayoutStyles, useTheme } from '../store/useThemeStore';
@@ -10,6 +10,14 @@ type ButtonVariant = 'primary' | 'accent' | 'danger' | 'ghost';
 interface AppInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  compact?: boolean;
+}
+
+interface AppSelectProps {
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
 }
 
 interface AppButtonProps {
@@ -119,6 +127,27 @@ function createUIStyles(theme: AppTheme): Record<string, CSSProperties> {
       color: c.danger,
       marginTop: s.xs,
       marginBottom: 0,
+    },
+    inputFieldWrap: {
+      position: 'relative',
+      width: '100%',
+    },
+    inputWithToggle: {
+      paddingRight: 44,
+    },
+    passwordToggle: {
+      position: 'absolute',
+      right: s.sm,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      border: 'none',
+      background: 'transparent',
+      color: c.textMuted,
+      cursor: 'pointer',
+      padding: s.xs,
+      ...t.captionBold,
+      fontFamily: 'inherit',
+      lineHeight: 1,
     },
     button: {
       borderRadius: r.sm,
@@ -296,17 +325,56 @@ function Spinner({ color }: { color: string }) {
   return <div className="spinner" style={{ color }} />;
 }
 
-export function AppInput({ label, error, style, ...props }: AppInputProps) {
+export function AppInput({ label, error, style, compact = false, type, ...props }: AppInputProps) {
+  const theme = useTheme();
+  const styles = useUIStyles();
+  const [showPassword, setShowPassword] = useState(false);
+  const isPasswordField = type === 'password';
+  const inputType = isPasswordField && showPassword ? 'text' : type;
+
+  return (
+    <div style={{ ...styles.inputWrapper, marginBottom: compact ? theme.spacing.xs : theme.spacing.md }}>
+      {label ? <label style={styles.inputLabel}>{label}</label> : null}
+      <div style={styles.inputFieldWrap}>
+        <input
+          style={{
+            ...styles.input,
+            ...(error ? styles.inputError : {}),
+            ...(isPasswordField ? styles.inputWithToggle : {}),
+            ...style,
+          }}
+          type={inputType}
+          {...props}
+        />
+        {isPasswordField ? (
+          <button
+            type="button"
+            style={styles.passwordToggle}
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+          >
+            {showPassword ? 'Ocultar' : 'Ver'}
+          </button>
+        ) : null}
+      </div>
+      {error ? <p style={styles.inputErrorMsg}>{error}</p> : null}
+    </div>
+  );
+}
+
+export function AppSelect({ label, value, onChange, options }: AppSelectProps) {
   const styles = useUIStyles();
 
   return (
     <div style={styles.inputWrapper}>
       {label ? <label style={styles.inputLabel}>{label}</label> : null}
-      <input
-        style={{ ...styles.input, ...(error ? styles.inputError : {}), ...style }}
-        {...props}
-      />
-      {error ? <p style={styles.inputErrorMsg}>{error}</p> : null}
+      <select style={styles.input} value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -590,9 +658,16 @@ export function LinkButton({ title, onPress }: LinkButtonProps) {
 
 export function LoadingView({ fullScreen = true }: LoadingViewProps) {
   const theme = useTheme();
-  const layout = useLayoutStyles();
+  const className = [
+    'page-container',
+    'page-container--centered',
+    fullScreen ? 'page-container--viewport' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div style={fullScreen ? layout.screenCentered : layout.flex1}>
+    <div className={className}>
       <Spinner color={theme.colors.primary} />
     </div>
   );
@@ -612,33 +687,30 @@ export function ScreenContainer({
   children,
   centered = false,
   keyboard = false,
+  fullHeight = false,
 }: {
   children: ReactNode;
   centered?: boolean;
   keyboard?: boolean;
+  fullHeight?: boolean;
 }) {
-  const layout = useLayoutStyles();
+  const className = [
+    'page-container',
+    centered ? 'page-container--centered' : '',
+    keyboard ? 'page-container--scroll' : '',
+    fullHeight ? 'page-container--viewport' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  if (keyboard) {
-    return (
-      <div
-        style={{
-          ...(centered ? layout.scrollContentCentered : layout.scrollContent),
-          overflowY: 'auto',
-          flex: 1,
-        }}
-      >
-        {children}
-      </div>
-    );
-  }
-
-  return <div style={layout.screen}>{children}</div>;
+  return <div className={className}>{children}</div>;
 }
 
-export function MessageText({ text, type }: { text: string; type: 'error' | 'success' }) {
+export function MessageText({ text, type }: { text: string; type: 'error' | 'success' | 'warning' }) {
   const layout = useLayoutStyles();
-  return <p style={type === 'error' ? layout.errorText : layout.successText}>{text}</p>;
+  const style =
+    type === 'error' ? layout.errorText : type === 'success' ? layout.successText : layout.warningText;
+  return <p style={style}>{text}</p>;
 }
 
 export function SuggestionList({

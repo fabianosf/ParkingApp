@@ -2,13 +2,13 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { LoadingView } from './components/UI';
+import { AppDialogHost } from './components/AppDialog';
 import AdminConfigPatio from './pages/AdminConfigPatio';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminHistorico from './pages/AdminHistorico';
 import AdminVeiculos from './pages/AdminVeiculos';
 import Cadastro from './pages/Cadastro';
 import Login from './pages/Login';
-import MotoristaHistorico from './pages/MotoristaHistorico';
 import MotoristaMeuVeiculo from './pages/MotoristaMeuVeiculo';
 import Perfil from './pages/Perfil';
 import RecuperarSenha1 from './pages/RecuperarSenha1';
@@ -37,6 +37,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <AppDialogHost />
       <Routes>
         <Route path="/" element={<RootRedirect />} />
 
@@ -64,7 +65,6 @@ export default function App() {
         <Route element={<ProtectedRoute requiredRole="MOTORISTA" />}>
           <Route element={<TabLayout tabs={driverTabs} />}>
             <Route path="/motorista/veiculo" element={<MotoristaMeuVeiculo />} />
-            <Route path="/motorista/historico" element={<MotoristaHistorico />} />
             <Route path="/motorista/perfil" element={<Perfil />} />
           </Route>
         </Route>

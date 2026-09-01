@@ -1,5 +1,7 @@
 export type UserRole = 'ADMIN' | 'MOTORISTA';
 
+export type VehicleType = 'CARRO' | 'MOTO' | 'ONIBUS' | 'CAMINHAO' | 'OUTRO';
+
 export interface User {
   id: string;
   nome: string;
@@ -15,9 +17,11 @@ export interface Vehicle {
   placa: string;
   modelo: string;
   cor: string;
+  tipo: VehicleType;
   owner_id: string;
   owner?: User;
   criado_em: string;
+  excluido_em?: string | null;
 }
 
 export interface VehicleAutocomplete {

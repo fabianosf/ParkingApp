@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -10,7 +11,13 @@ from app.models.user import User, UserRole
 from app.models.vehicle import Vehicle
 from app.schemas.auth import MessageResponse
 from app.schemas.user import UserResponse
-from app.schemas.vehicle import VehicleAutocomplete, VehicleCreate, VehicleResponse, VehicleUpdate
+from app.schemas.vehicle import (
+    VehicleAutocomplete,
+    VehicleCreate,
+    VehicleResponse,
+    VehicleSelfCreate,
+    VehicleUpdate,
+)
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
@@ -21,19 +28,37 @@ def _vehicle_response(vehicle: Vehicle) -> VehicleResponse:
         placa=vehicle.placa,
         modelo=vehicle.modelo,
         cor=vehicle.cor,
+        tipo=vehicle.tipo,
         owner_id=vehicle.owner_id,
         owner=UserResponse.from_user(vehicle.owner) if vehicle.owner else None,
         criado_em=vehicle.criado_em,
+        excluido_em=vehicle.excluido_em,
     )
+
+
+def _ensure_vehicle_can_be_deleted(db: Session, vehicle_id: UUID) -> None:
+    active = (
+        db.query(ParkingRecord)
+        .filter(ParkingRecord.vehicle_id == vehicle_id, ParkingRecord.status == ParkingStatus.NO_PATIO)
+        .first()
+    )
+    if active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Veículo possui registro ativo no pátio. Registre a saída antes de excluir.",
+        )
 
 
 @router.get("/", response_model=list[VehicleResponse])
 def list_vehicles(
     filtro: str | None = Query(None, description="Filtrar por placa, modelo ou proprietário"),
+    incluir_excluidos: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_full_access),
 ):
     query = db.query(Vehicle).options(joinedload(Vehicle.owner))
+    if not incluir_excluidos or current_user.role != UserRole.ADMIN:
+        query = query.filter(Vehicle.excluido_em.is_(None))
     if current_user.role == UserRole.MOTORISTA:
         query = query.filter(Vehicle.owner_id == current_user.id)
     elif filtro:
@@ -56,6 +81,32 @@ def autocomplete_placa(
     term = f"%{q.upper().replace('-', '').replace(' ', '')}%"
     vehicles = db.query(Vehicle).filter(Vehicle.placa.ilike(term)).limit(10).all()
     return vehicles
+
+
+@router.post("/mine", response_model=VehicleResponse, status_code=status.HTTP_201_CREATED)
+def create_my_vehicle(
+    data: VehicleSelfCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_full_access),
+):
+    if current_user.role != UserRole.MOTORISTA:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão insuficiente")
+
+    if db.query(Vehicle).filter(Vehicle.placa == data.placa).first():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Placa já cadastrada")
+
+    vehicle = Vehicle(
+        placa=data.placa,
+        modelo=data.modelo.strip(),
+        cor=data.cor.strip(),
+        tipo=data.tipo,
+        owner_id=current_user.id,
+    )
+    db.add(vehicle)
+    db.commit()
+    db.refresh(vehicle)
+    vehicle = db.query(Vehicle).options(joinedload(Vehicle.owner)).filter(Vehicle.id == vehicle.id).first()
+    return _vehicle_response(vehicle)
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse)
@@ -87,7 +138,9 @@ def create_vehicle(
     if owner is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proprietário não encontrado")
 
-    vehicle = Vehicle(placa=data.placa, modelo=data.modelo, cor=data.cor, owner_id=data.owner_id)
+    vehicle = Vehicle(
+        placa=data.placa, modelo=data.modelo, cor=data.cor, tipo=data.tipo, owner_id=data.owner_id
+    )
     db.add(vehicle)
     db.commit()
     db.refresh(vehicle)
@@ -115,6 +168,8 @@ def update_vehicle(
         vehicle.modelo = data.modelo
     if data.cor is not None:
         vehicle.cor = data.cor
+    if data.tipo is not None:
+        vehicle.tipo = data.tipo
     if data.owner_id is not None:
         owner = db.query(User).filter(User.id == data.owner_id).first()
         if owner is None:
@@ -131,23 +186,20 @@ def update_vehicle(
 def delete_vehicle(
     vehicle_id: UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role(UserRole.ADMIN)),
+    current_user: User = Depends(get_current_user_full_access),
 ):
     vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
     if vehicle is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado")
 
-    active = (
-        db.query(ParkingRecord)
-        .filter(ParkingRecord.vehicle_id == vehicle_id, ParkingRecord.status == ParkingStatus.NO_PATIO)
-        .first()
-    )
-    if active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Veículo possui registro ativo no pátio. Registre a saída antes de excluir.",
-        )
+    if current_user.role == UserRole.MOTORISTA:
+        if vehicle.owner_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão insuficiente")
+    elif current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão insuficiente")
 
-    db.delete(vehicle)
+    _ensure_vehicle_can_be_deleted(db, vehicle_id)
+
+    vehicle.excluido_em = datetime.now(timezone.utc)
     db.commit()
     return MessageResponse(message="Veículo excluído com sucesso")

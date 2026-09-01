@@ -1,3 +1,5 @@
+import secrets
+
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -23,6 +25,7 @@ from app.models.user import User
 from app.schemas.auth import (
     FirstAccessPasswordRequest,
     ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     MessageResponse,
     RefreshTokenRequest,
@@ -128,15 +131,25 @@ def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/forgot-password", response_model=MessageResponse)
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
 async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    generic_msg = MessageResponse(
-        message="Se o email estiver cadastrado, você receberá instruções para redefinir sua senha."
+    generic = ForgotPasswordResponse(
+        message="Se o CPF estiver cadastrado, você poderá cadastrar uma nova senha."
     )
 
-    user = db.query(User).filter(User.email == data.email).first()
+    user = db.query(User).filter(User.cpf == data.cpf).first()
     if user is None:
-        return generic_msg
+        return generic
+
+    # Invalida tokens anteriores ainda não usados
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.usado.is_(False),
+    ).update({PasswordResetToken.usado: True})
+
+    # Invalida a senha atual até concluir o reset
+    user.senha_hash = hash_password(secrets.token_urlsafe(32))
+    user.senha_provisoria = False
 
     token = generate_reset_token()
     reset_token = PasswordResetToken(
@@ -147,17 +160,27 @@ async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get
     db.add(reset_token)
     db.commit()
 
+    reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/redefinir-senha?token={token}"
+
     if settings.MAIL_USERNAME:
         message = MessageSchema(
             subject="Redefinição de senha - Estacionamento",
             recipients=[user.email],
-            body=f"Use o token abaixo para redefinir sua senha (válido por {settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES} minutos):\n\n{token}",
+            body=(
+                f"Sua senha foi bloqueada por segurança.\n\n"
+                f"Acesse o link abaixo para cadastrar uma nova senha "
+                f"(válido por {settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES} minutos):\n\n"
+                f"{reset_url}\n"
+            ),
             subtype=MessageType.plain,
         )
         fm = FastMail(mail_config)
         await fm.send_message(message)
 
-    return generic_msg
+    return ForgotPasswordResponse(
+        message="Senha bloqueada. Cadastre uma nova senha na próxima tela.",
+        reset_token=token,
+    )
 
 
 @router.post("/reset-password", response_model=MessageResponse)

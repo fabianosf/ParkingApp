@@ -1,42 +1,71 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import {
   AppButton,
   AppInput,
   LinkButton,
   MessageText,
-  ScreenContainer,
-  ScreenHeader,
 } from '../components/UI';
-import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import { api, getErrorMessage } from '../services/api';
+import { useLayoutStyles } from '../store/useThemeStore';
+import { getPasswordPolicyMessage } from '../utils/validation';
+
+const RESET_TOKEN_KEY = 'password_reset_token';
+
+function resolveResetToken(searchParams: URLSearchParams): string {
+  const fromUrl = searchParams.get('token')?.trim() ?? '';
+  if (fromUrl) {
+    sessionStorage.setItem(RESET_TOKEN_KEY, fromUrl);
+    return fromUrl;
+  }
+  return sessionStorage.getItem(RESET_TOKEN_KEY)?.trim() ?? '';
+}
 
 export default function RecuperarSenha2() {
+  const layout = useLayoutStyles();
   const navigate = useNavigate();
-  const [token, setToken] = useState('');
+  const [searchParams] = useSearchParams();
+  const token = useMemo(() => resolveResetToken(searchParams), [searchParams]);
+
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const canSubmit =
-    !!token.trim() && isChecklistComplete(novaSenha) && novaSenha === confirmar && !loading;
+  const senhasConferem = novaSenha.length > 0 && novaSenha === confirmar;
+  const canSubmit = !!token && novaSenha.length > 0 && confirmar.length > 0 && !loading;
+
+  const centeredTitle = {
+    ...layout.title,
+    textAlign: 'center' as const,
+    width: '100%',
+  };
+
+  const centeredSubtitle = {
+    ...layout.subtitle,
+    textAlign: 'center' as const,
+    width: '100%',
+  };
 
   const handleSubmit = async () => {
     setError('');
-    if (!token.trim()) return setError('Informe o token');
-    if (!isChecklistComplete(novaSenha)) return setError('Senha não atende à política');
+    if (!token) return setError('Link inválido. Solicite a recuperação novamente.');
+    if (!isChecklistComplete(novaSenha)) {
+      return setError(getPasswordPolicyMessage(novaSenha) || 'A senha não atende à política da empresa.');
+    }
     if (novaSenha !== confirmar) return setError('Senhas não conferem');
 
     setLoading(true);
     try {
       const { data } = await api.post('/auth/reset-password', {
-        token: token.trim(),
+        token,
         nova_senha: novaSenha,
         confirmar_senha: confirmar,
       });
+      sessionStorage.removeItem(RESET_TOKEN_KEY);
       setMessage(data.message);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
@@ -46,39 +75,88 @@ export default function RecuperarSenha2() {
     }
   };
 
+  if (!token) {
+    return (
+      <div className="auth-screen">
+        <div className="auth-screen__card">
+          <div className="auth-screen__card-bg" aria-hidden="true" />
+          <div className="auth-screen__card-overlay" aria-hidden="true" />
+          <div className="auth-screen__content">
+            <div className="auth-screen__hero">
+              <h1 style={centeredTitle}>Link inválido</h1>
+              <p style={centeredSubtitle}>Solicite a recuperação de senha novamente.</p>
+            </div>
+            <div className="auth-screen__form auth-screen__form--long">
+              <LinkButton title="Recuperar senha" onPress={() => navigate('/recuperar-senha')} />
+              <LinkButton title="Voltar ao login" onPress={() => navigate('/login')} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ScreenContainer keyboard>
-      <ScreenHeader title="Nova Senha" subtitle="Informe o token recebido e defina uma nova senha" />
+    <div className="auth-screen">
+      <div className="auth-screen__card">
+        <div className="auth-screen__card-bg" aria-hidden="true" />
+        <div className="auth-screen__card-overlay" aria-hidden="true" />
 
-      {error ? <MessageText text={error} type="error" /> : null}
-      {message ? <MessageText text={message} type="success" /> : null}
+        <div className="auth-screen__content">
+          <div className="auth-screen__hero">
+            <h1 style={centeredTitle}>Cadastrar nova senha</h1>
+            <p style={centeredSubtitle}>
+              Sua senha anterior foi bloqueada. Defina uma nova senha conforme a política da empresa.
+            </p>
+          </div>
 
-      <AppInput label="Token" placeholder="Token" value={token} onChange={(e) => setToken(e.target.value)} />
-      <AppInput
-        label="Nova senha"
-        placeholder="Nova senha"
-        value={novaSenha}
-        onChange={(e) => setNovaSenha(e.target.value)}
-        type="password"
-      />
-      <PasswordChecklist password={novaSenha} />
-      <AppInput
-        label="Confirmar nova senha"
-        placeholder="Confirmar nova senha"
-        value={confirmar}
-        onChange={(e) => setConfirmar(e.target.value)}
-        type="password"
-      />
+          <div className="auth-screen__form auth-screen__form--long">
+            {error ? <MessageText text={error} type="error" /> : null}
+            {message ? <MessageText text={message} type="success" /> : null}
 
-      <AppButton
-        title="Redefinir Senha"
-        onPress={handleSubmit}
-        variant="primary"
-        loading={loading}
-        disabled={!canSubmit}
-      />
+            <div className="auth-screen__password-group">
+              <AppInput
+                label="Nova senha"
+                placeholder="Nova senha"
+                value={novaSenha}
+                onChange={(e) => {
+                  setNovaSenha(e.target.value);
+                  setError('');
+                }}
+                type="password"
+                compact
+              />
+              <PasswordChecklist password={novaSenha} compact />
+              <AppInput
+                label="Confirmar nova senha"
+                placeholder="Confirmar nova senha"
+                value={confirmar}
+                onChange={(e) => {
+                  setConfirmar(e.target.value);
+                  setError('');
+                }}
+                type="password"
+                compact
+                error={
+                  confirmar.length > 0 && !senhasConferem ? 'Senhas não conferem' : undefined
+                }
+              />
+            </div>
 
-      <LinkButton title="Voltar ao login" onPress={() => navigate('/login')} />
-    </ScreenContainer>
+            <AppButton
+              title="Salvar nova senha"
+              onPress={handleSubmit}
+              variant="primary"
+              loading={loading}
+              disabled={!canSubmit}
+            />
+
+            <div className="auth-screen__links">
+              <LinkButton title="Voltar ao login" onPress={() => navigate('/login')} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

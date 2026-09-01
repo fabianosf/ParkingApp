@@ -49,7 +49,14 @@ export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const detail = error.response?.data?.detail;
     if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail)) return detail.map((d: { msg: string }) => d.msg).join(', ');
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item: { msg?: string }) => {
+          const msg = item.msg ?? 'Erro de validação';
+          return msg.replace(/^Value error,\s*/i, '');
+        })
+        .join(' ');
+    }
   }
   return 'Erro inesperado. Tente novamente.';
 }

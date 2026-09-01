@@ -156,6 +156,11 @@ export function createLayoutStyles(theme: AppTheme) {
       color: c.accent,
       marginBottom: s.md,
     },
+    warningText: {
+      ...t.caption,
+      color: c.warning,
+      marginBottom: s.md,
+    },
     link: {
       ...t.link,
       color: c.primaryLight,

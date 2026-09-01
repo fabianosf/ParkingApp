@@ -25,6 +25,26 @@ export function isPasswordPolicyValid(password: string): boolean {
   return c.minLength && c.hasUpper && c.hasLower && c.hasNumber && c.hasSpecial && c.notProvisional;
 }
 
+const PASSWORD_POLICY_RULES: { key: keyof PasswordChecks; label: string }[] = [
+  { key: 'minLength', label: 'mínimo 6 caracteres' },
+  { key: 'hasUpper', label: '1 letra maiúscula' },
+  { key: 'hasLower', label: '1 letra minúscula' },
+  { key: 'hasNumber', label: '1 número' },
+  { key: 'hasSpecial', label: '1 caractere especial (!@#$%^&*()-_+=)' },
+  { key: 'notProvisional', label: 'diferente de 12345' },
+];
+
+export function getPasswordPolicyMessage(password: string): string {
+  const checks = getPasswordChecks(password);
+  const missing = PASSWORD_POLICY_RULES.filter((rule) => !checks[rule.key]).map((rule) => rule.label);
+
+  if (missing.length === 0) return '';
+  if (!password.trim()) {
+    return 'Informe uma senha que atenda à política de segurança.';
+  }
+  return `A senha ainda precisa de: ${missing.join(', ')}.`;
+}
+
 export function validateCPF(cpf: string): boolean {
   const cleaned = cpf.replace(/\D/g, '');
   if (cleaned.length !== 11 || /^(\d)\1+$/.test(cleaned)) return false;

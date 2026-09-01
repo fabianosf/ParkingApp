@@ -7,11 +7,13 @@ import {
   Avatar,
   Card,
   MessageText,
+  ScreenContainer,
   ScreenHeader,
 } from '../components/UI';
 import { PasswordChecklist, isChecklistComplete } from '../components/PasswordChecklist';
 import { api, getErrorMessage } from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
+import { appConfirm } from '../store/useDialogStore';
 import { useLayoutStyles } from '../store/useThemeStore';
 
 export default function Perfil() {
@@ -57,9 +59,15 @@ export default function Perfil() {
   };
 
   const handleLogout = () => {
-    if (window.confirm('Deseja sair da conta?')) {
-      void logout();
-    }
+    void (async () => {
+      const ok = await appConfirm({
+        title: 'Sair da conta',
+        message: 'Deseja sair da conta?',
+        confirmLabel: 'Sair',
+        variant: 'danger',
+      });
+      if (ok) await logout();
+    })();
   };
 
   useEffect(() => {
@@ -67,7 +75,7 @@ export default function Perfil() {
   }, [setUser]);
 
   return (
-    <div style={{ ...layout.screen, overflowY: 'auto' }}>
+    <ScreenContainer keyboard>
       <ScreenHeader title="Perfil" />
 
       <div style={layout.avatarRow}>
@@ -122,6 +130,6 @@ export default function Perfil() {
       <div style={layout.sectionSpaced}>
         <AppButtonGhostDanger title="Sair" onPress={handleLogout} />
       </div>
-    </div>
+    </ScreenContainer>
   );
 }

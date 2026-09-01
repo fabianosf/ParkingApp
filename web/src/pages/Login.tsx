@@ -5,7 +5,6 @@ import {
   AppButton,
   AppInput,
   LinkButton,
-  LogoAvatar,
   MessageText,
 } from '../components/UI';
 import { getErrorMessage } from '../services/api';
@@ -55,22 +54,18 @@ export default function Login() {
   };
 
   return (
-    <div className="login-screen">
-      <div className="login-screen__card">
-        <div className="login-screen__card-bg" aria-hidden="true" />
-        <div className="login-screen__card-overlay" aria-hidden="true" />
+    <div className="auth-screen">
+      <div className="auth-screen__card">
+        <div className="auth-screen__card-bg" aria-hidden="true" />
+        <div className="auth-screen__card-overlay" aria-hidden="true" />
 
-        <div className="login-screen__content">
-          <div style={layout.logoContainer}>
-            <LogoAvatar initials="EC" />
-          </div>
-
-          <div className="login-screen__hero">
+        <div className="auth-screen__content">
+          <div className="auth-screen__hero">
             <h1 style={centeredTitle}>Estacionamento</h1>
             <p style={centeredSubtitle}>Controle interno corporativo</p>
           </div>
 
-          <div className="login-screen__form">
+          <div className="auth-screen__form">
             {error ? <MessageText text={error} type="error" /> : null}
 
             <AppInput
@@ -91,8 +86,10 @@ export default function Login() {
 
             <AppButton title="Entrar" onPress={handleLogin} variant="primary" loading={loading} disabled={loading} />
 
-            <LinkButton title="Esqueci minha senha" onPress={() => navigate('/recuperar-senha')} />
-            <LinkButton title="Criar conta" onPress={() => navigate('/cadastro')} />
+            <div className="auth-screen__links">
+              <LinkButton title="Esqueci minha senha" onPress={() => navigate('/recuperar-senha')} />
+              <LinkButton title="Criar conta" onPress={() => navigate('/cadastro')} />
+            </div>
           </div>
         </div>
       </div>

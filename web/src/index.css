@@ -2,6 +2,8 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
@@ -9,20 +11,25 @@ body,
 #root {
   width: 100%;
   height: 100%;
-  height: 100dvh;
-  margin: 0;
-  padding: 0;
+  min-height: 100dvh;
+  min-height: 100svh;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: #F5F7FA;
+  overflow-x: hidden;
 }
 
 #root {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-height: 100dvh;
+  min-height: 100svh;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
 }
 
 button,
@@ -53,72 +60,201 @@ button:disabled {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
   width: 100%;
+  min-height: 0;
 }
 
 .app-main {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.login-screen {
-  flex: 1;
+/* Mobile-first: ocupa 100% da largura, sem sobra lateral */
+.page-container {
   width: 100%;
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  max-width: none;
+  margin: 0;
+  min-height: 100%;
+  flex: 1;
   padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   background-color: #F5F7FA;
 }
 
-.login-screen__card {
-  position: relative;
-  width: 100%;
-  max-width: 400px;
-  min-height: min(920px, 96dvh);
-  display: flex;
-  align-items: center;
+.page-container--centered {
   justify-content: center;
 }
 
-.login-screen__card-bg {
+.page-container--scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page-container--full {
+  flex: 1;
+  min-height: 100%;
+}
+
+.page-container--viewport {
+  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  min-height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .page-container {
+    padding: 24px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Auth (login/cadastro): tela cheia, fundo cover sem faixas */
+.auth-screen {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  flex: 1;
+  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  min-height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  background-color: #F5F7FA;
+  overflow: hidden;
+}
+
+.auth-screen__card {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.auth-screen__card-bg {
   position: absolute;
   inset: 0;
-  background: url('/images/login-hero.jpg') center center / contain no-repeat;
+  background: url('/images/login-hero.jpg') center center / cover no-repeat;
   pointer-events: none;
 }
 
-.login-screen__card-overlay {
+.auth-screen__card-overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgba(245, 247, 250, 0.12) 0%,
-    rgba(245, 247, 250, 0.32) 42%,
-    rgba(245, 247, 250, 0.52) 100%
+    rgba(245, 247, 250, 0.18) 0%,
+    rgba(245, 247, 250, 0.38) 45%,
+    rgba(245, 247, 250, 0.58) 100%
   );
 }
 
-.login-screen__content {
+.auth-screen__content {
   position: relative;
   z-index: 1;
   width: 100%;
-  padding: 20px 18px 28px;
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: max(12vh, env(safe-area-inset-top, 0px));
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   text-align: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.login-screen__hero {
+.auth-screen__hero {
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
-.login-screen__form {
+.auth-screen__form {
   width: 100%;
+  margin-top: 340px;
+  padding-bottom: max(32px, env(safe-area-inset-bottom, 0px));
+}
+
+/* Formulários longos (cadastro, redefinir senha): menos espaço no topo + scroll */
+.auth-screen__form--long {
+  margin-top: 280px;
+}
+
+.auth-screen__password-group {
+  width: 100%;
+}
+
+.auth-screen__password-group p {
+  text-align: left;
+}
+
+.auth-screen__links {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-screen__links button {
+  display: block;
+  width: 100%;
+}
+
+.auth-screen__links button + button {
+  margin-top: 20px;
+}
+
+@media (min-width: 768px) {
+  .auth-screen {
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    min-height: 100dvh;
+  }
+
+  .auth-screen__card {
+    flex: none;
+    max-width: 400px;
+    min-height: min(920px, 96dvh);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .auth-screen__card-bg {
+    background-size: contain;
+  }
+
+  .auth-screen__content {
+    flex: 1;
+    min-height: 0;
+    padding: 24px 20px 28px;
+    padding-top: 18vh;
+  }
+
+  .auth-screen__form {
+    margin-top: 48px;
+  }
+
+  .auth-screen__form--long {
+    margin-top: 32px;
+  }
 }
