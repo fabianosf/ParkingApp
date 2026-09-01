@@ -101,17 +101,58 @@ No `.env` do mobile: `EXPO_PUBLIC_API_URL=http://SEU_IP:8000` (celular) ou `http
 
 ---
 
-## Rodar com Docker (Postgres local)
+## Rodar tudo com Docker (recomendado — PWA + API + Postgres)
+
+Na raiz do projeto:
+
+```powershell
+# 1. (Opcional) variáveis de produção
+copy .env.docker.example .env
+
+# 2. Subir stack completa
+docker compose up --build
+```
+
+| Serviço | URL |
+|---------|-----|
+| **App (PWA)** | http://localhost:8080 |
+| **API / Swagger** | http://localhost:8000/docs |
+| **PostgreSQL** | localhost:5432 (user: `parking`, pass: `parking`, db: `parking_db`) |
+
+O container `web` (nginx) serve o frontend e faz proxy da API na mesma origem — sem CORS no navegador.
+
+**Parar:**
+```powershell
+docker compose down
+```
+
+**Parar e apagar banco:**
+```powershell
+docker compose down -v
+```
+
+### Docker só com Supabase (sem Postgres local)
+
+```powershell
+docker compose -f docker-compose.supabase.yml up --build
+```
+
+Configure `backend/.env` com `DATABASE_URL` ou credenciais Supabase antes de subir.
+
+---
+
+## Rodar com Docker (legado — só API + Postgres)
 
 ```bash
-# Na raiz do projeto
-docker compose up --build
+docker compose up db api --build
 ```
 
 A API ficará disponível em:
 - **API:** http://localhost:8000
 - **Swagger Docs:** http://localhost:8000/docs
 - **PostgreSQL:** localhost:5432 (user: parking, pass: parking, db: parking_db)
+
+Para o PWA, use `npm run dev` em `web/` ou suba o serviço `web` conforme seção acima.
 
 ## Rodar Backend Local (sem Docker)
 

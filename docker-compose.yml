@@ -21,7 +21,13 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://parking:parking@db:5432/parking_db
-      SECRET_KEY: dev-secret-key-change-in-production
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173,http://127.0.0.1:8080}
+      ADMIN_CPF: ${ADMIN_CPF:-05721845732}
+      ADMIN_SENHA: ${ADMIN_SENHA:-260281xx}
+      ADMIN_NOME: ${ADMIN_NOME:-Administrador}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@parking.local}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-noreply@example.com}
@@ -29,6 +35,20 @@ services:
       MAIL_PORT: ${MAIL_PORT:-587}
     depends_on:
       db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    build: ./web
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
         condition: service_healthy
 
 volumes:
