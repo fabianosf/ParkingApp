@@ -77,7 +77,10 @@ class Settings(BaseSettings):
                 database="postgres",
                 query={"sslmode": "require"},
             )
-        return URL.create(self.DATABASE_URL)
+        url = self.DATABASE_URL
+        if url.startswith("postgresql://") and "+psycopg" not in url:
+            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        return make_url(url)
 
     @property
     def uses_supabase(self) -> bool:

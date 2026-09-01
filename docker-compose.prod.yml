@@ -1,0 +1,22 @@
+# Produção no VPS (acesso por IP na porta 80)
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  db:
+    ports: !override []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parking}
+
+  api:
+    build: ./backend
+    ports: !override []
+    environment:
+      DATABASE_URL: postgresql://parking:${POSTGRES_PASSWORD:-parking}@db:5432/parking_db
+
+  web:
+    build: ./web
+    ports: !override
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
