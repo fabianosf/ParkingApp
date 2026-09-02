@@ -12,23 +12,13 @@ import { api, getErrorMessage } from '../services/api';
 import { useLayoutStyles } from '../store/useThemeStore';
 import { getPasswordPolicyMessage } from '../utils/validation';
 
-const RESET_TOKEN_KEY = 'password_reset_token';
-
-function resolveResetToken(searchParams: URLSearchParams): string {
-  const fromUrl = searchParams.get('token')?.trim() ?? '';
-  if (fromUrl) {
-    sessionStorage.setItem(RESET_TOKEN_KEY, fromUrl);
-    return fromUrl;
-  }
-  return sessionStorage.getItem(RESET_TOKEN_KEY)?.trim() ?? '';
-}
-
 export default function RecuperarSenha2() {
   const layout = useLayoutStyles();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = useMemo(() => resolveResetToken(searchParams), [searchParams]);
+  const tokenFromUrl = useMemo(() => searchParams.get('token')?.trim() ?? '', [searchParams]);
 
+  const [token, setToken] = useState(tokenFromUrl);
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [error, setError] = useState('');
@@ -36,7 +26,7 @@ export default function RecuperarSenha2() {
   const [loading, setLoading] = useState(false);
 
   const senhasConferem = novaSenha.length > 0 && novaSenha === confirmar;
-  const canSubmit = !!token && novaSenha.length > 0 && confirmar.length > 0 && !loading;
+  const canSubmit = !!token.trim() && novaSenha.length > 0 && confirmar.length > 0 && !loading;
 
   const centeredTitle = {
     ...layout.title,
@@ -52,7 +42,7 @@ export default function RecuperarSenha2() {
 
   const handleSubmit = async () => {
     setError('');
-    if (!token) return setError('Link inválido. Solicite a recuperação novamente.');
+    if (!token.trim()) return setError('Informe o token recebido por e-mail ou link.');
     if (!isChecklistComplete(novaSenha)) {
       return setError(getPasswordPolicyMessage(novaSenha) || 'A senha não atende à política da empresa.');
     }
@@ -61,11 +51,10 @@ export default function RecuperarSenha2() {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/reset-password', {
-        token,
+        token: token.trim(),
         nova_senha: novaSenha,
         confirmar_senha: confirmar,
       });
-      sessionStorage.removeItem(RESET_TOKEN_KEY);
       setMessage(data.message);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
@@ -74,27 +63,6 @@ export default function RecuperarSenha2() {
       setLoading(false);
     }
   };
-
-  if (!token) {
-    return (
-      <div className="auth-screen">
-        <div className="auth-screen__card">
-          <div className="auth-screen__card-bg" aria-hidden="true" />
-          <div className="auth-screen__card-overlay" aria-hidden="true" />
-          <div className="auth-screen__content">
-            <div className="auth-screen__hero">
-              <h1 style={centeredTitle}>Link inválido</h1>
-              <p style={centeredSubtitle}>Solicite a recuperação de senha novamente.</p>
-            </div>
-            <div className="auth-screen__form auth-screen__form--long">
-              <LinkButton title="Recuperar senha" onPress={() => navigate('/recuperar-senha')} />
-              <LinkButton title="Voltar ao login" onPress={() => navigate('/login')} />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-screen">
@@ -106,13 +74,25 @@ export default function RecuperarSenha2() {
           <div className="auth-screen__hero">
             <h1 style={centeredTitle}>Cadastrar nova senha</h1>
             <p style={centeredSubtitle}>
-              Sua senha anterior foi bloqueada. Defina uma nova senha conforme a política da empresa.
+              Use o token do e-mail/link e defina uma nova senha conforme a política da empresa.
             </p>
           </div>
 
           <div className="auth-screen__form auth-screen__form--long">
             {error ? <MessageText text={error} type="error" /> : null}
             {message ? <MessageText text={message} type="success" /> : null}
+
+            {!tokenFromUrl ? (
+              <AppInput
+                label="Token"
+                placeholder="Cole o token recebido"
+                value={token}
+                onChange={(e) => {
+                  setToken(e.target.value);
+                  setError('');
+                }}
+              />
+            ) : null}
 
             <div className="auth-screen__password-group">
               <AppInput

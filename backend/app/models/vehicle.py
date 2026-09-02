@@ -21,7 +21,7 @@ class Vehicle(Base):
     __tablename__ = "vehicles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    placa: Mapped[str] = mapped_column(String(7), unique=True, nullable=False, index=True)
+    placa: Mapped[str] = mapped_column(String(7), nullable=False, index=True)
     modelo: Mapped[str] = mapped_column(String(100), nullable=False)
     cor: Mapped[str] = mapped_column(String(50), nullable=False)
     tipo: Mapped[VehicleType] = mapped_column(Enum(VehicleType), nullable=False, default=VehicleType.CARRO)

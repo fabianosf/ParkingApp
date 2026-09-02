@@ -8,14 +8,15 @@ from app.models.user import UserRole
 
 
 class UserCreate(BaseModel):
-    """Cadastro público (self-service) — exige senha forte."""
+    """Cadastro público (self-service) — exige senha forte. Sempre MOTORISTA."""
+
+    model_config = {"extra": "forbid"}
 
     nome: str
     cpf: str
     email: EmailStr
     senha: str
     confirmar_senha: str
-    role: UserRole = UserRole.MOTORISTA
 
     @field_validator("cpf")
     @classmethod

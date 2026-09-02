@@ -55,7 +55,6 @@ export default function RegisterScreen({ navigation }: Props) {
         email: email.trim().toLowerCase(),
         senha,
         confirmar_senha: confirmar,
-        role: 'MOTORISTA',
       });
       navigation.navigate('Login');
     } catch (err) {

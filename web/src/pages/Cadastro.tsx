@@ -53,7 +53,6 @@ export default function Cadastro() {
         email: email.trim().toLowerCase(),
         senha,
         confirmar_senha: confirmar,
-        role: 'MOTORISTA',
       });
       navigate('/login');
     } catch (err) {

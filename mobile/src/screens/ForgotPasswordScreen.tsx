@@ -33,11 +33,10 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       const { data } = await api.post('/auth/forgot-password', {
         cpf: cpf.replace(/\D/g, ''),
       });
-      if (data.reset_token) {
-        navigation.replace('ResetPassword', { token: data.reset_token });
-        return;
-      }
-      setMessage(data.message ?? 'Se o CPF estiver cadastrado, você poderá cadastrar uma nova senha.');
+      setMessage(
+        data.message ??
+          'Se o CPF estiver cadastrado, enviaremos as instruções para redefinir a senha.',
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -49,7 +48,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     <ScreenContainer keyboard>
       <ScreenHeader
         title="Recuperar Senha"
-        subtitle="Informe seu CPF. Sua senha atual será bloqueada e você cadastrará uma nova."
+        subtitle="Informe seu CPF. Se estiver cadastrado, enviaremos as instruções para redefinir a senha."
       />
 
       {error ? <MessageText text={error} type="error" /> : null}
@@ -66,6 +65,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
 
       <AppButton title="Continuar" onPress={handleSubmit} variant="primary" loading={loading} disabled={loading} />
 
+      <LinkButton title="Já tenho o token" onPress={() => navigation.navigate('ResetPassword')} />
       <LinkButton title="Voltar ao login" onPress={() => navigation.navigate('Login')} />
     </ScreenContainer>
   );

@@ -48,5 +48,6 @@ export const adminTabs: TabItem[] = [
 
 export const driverTabs: TabItem[] = [
   { to: '/motorista/veiculo', label: 'Meu Veículo' },
+  { to: '/motorista/historico', label: 'Histórico' },
   { to: '/motorista/perfil', label: 'Perfil' },
 ];

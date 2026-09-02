@@ -1,0 +1,5 @@
+# Defina DOMAIN no .env (ex.: estacionamento.suaempresa.com.br)
+
+{$DOMAIN} {
+    reverse_proxy web:80
+}

@@ -12,8 +12,6 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useLayoutStyles } from '../store/useThemeStore';
 import { formatCPF, validateCPF } from '../utils/validation';
 
-const RESET_TOKEN_KEY = 'password_reset_token';
-
 export default function RecuperarSenha1() {
   const layout = useLayoutStyles();
   const navigate = useNavigate();
@@ -43,16 +41,13 @@ export default function RecuperarSenha1() {
     setMessage('');
     try {
       await logout();
-
       const { data } = await api.post('/auth/forgot-password', {
         cpf: cpf.replace(/\D/g, ''),
       });
-      if (data.reset_token) {
-        sessionStorage.setItem(RESET_TOKEN_KEY, data.reset_token);
-        navigate(`/redefinir-senha?token=${encodeURIComponent(data.reset_token)}`, { replace: true });
-        return;
-      }
-      setMessage(data.message ?? 'Se o CPF estiver cadastrado, você poderá cadastrar uma nova senha.');
+      setMessage(
+        data.message ??
+          'Se o CPF estiver cadastrado, enviaremos as instruções para redefinir a senha.',
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -70,7 +65,7 @@ export default function RecuperarSenha1() {
           <div className="auth-screen__hero">
             <h1 style={centeredTitle}>Recuperar Senha</h1>
             <p style={centeredSubtitle}>
-              Informe seu CPF. Sua senha atual será bloqueada e você cadastrará uma nova.
+              Informe seu CPF. Se estiver cadastrado, enviaremos as instruções para redefinir a senha.
             </p>
           </div>
 
@@ -90,6 +85,7 @@ export default function RecuperarSenha1() {
             <AppButton title="Continuar" onPress={handleSubmit} variant="primary" loading={loading} disabled={loading} />
 
             <div className="auth-screen__links">
+              <LinkButton title="Já tenho o link" onPress={() => navigate('/redefinir-senha')} />
               <LinkButton title="Voltar ao login" onPress={() => navigate('/login')} />
             </div>
           </div>

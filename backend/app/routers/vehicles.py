@@ -79,7 +79,12 @@ def autocomplete_placa(
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
     term = f"%{q.upper().replace('-', '').replace(' ', '')}%"
-    vehicles = db.query(Vehicle).filter(Vehicle.placa.ilike(term)).limit(10).all()
+    vehicles = (
+        db.query(Vehicle)
+        .filter(Vehicle.placa.ilike(term), Vehicle.excluido_em.is_(None))
+        .limit(10)
+        .all()
+    )
     return vehicles
 
 
@@ -92,7 +97,11 @@ def create_my_vehicle(
     if current_user.role != UserRole.MOTORISTA:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão insuficiente")
 
-    if db.query(Vehicle).filter(Vehicle.placa == data.placa).first():
+    if (
+        db.query(Vehicle)
+        .filter(Vehicle.placa == data.placa, Vehicle.excluido_em.is_(None))
+        .first()
+    ):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Placa já cadastrada")
 
     vehicle = Vehicle(
@@ -131,7 +140,11 @@ def create_vehicle(
     db: Session = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    if db.query(Vehicle).filter(Vehicle.placa == data.placa).first():
+    if (
+        db.query(Vehicle)
+        .filter(Vehicle.placa == data.placa, Vehicle.excluido_em.is_(None))
+        .first()
+    ):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Placa já cadastrada")
 
     owner = db.query(User).filter(User.id == data.owner_id).first()
@@ -160,7 +173,15 @@ def update_vehicle(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado")
 
     if data.placa is not None:
-        existing = db.query(Vehicle).filter(Vehicle.placa == data.placa, Vehicle.id != vehicle_id).first()
+        existing = (
+            db.query(Vehicle)
+            .filter(
+                Vehicle.placa == data.placa,
+                Vehicle.id != vehicle_id,
+                Vehicle.excluido_em.is_(None),
+            )
+            .first()
+        )
         if existing:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Placa já cadastrada")
         vehicle.placa = data.placa

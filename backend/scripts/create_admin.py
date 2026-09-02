@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from passlib.context import CryptContext
 from sqlalchemy import create_engine, text
 
-DATABASE_URL = sys.argv[1] if len(sys.argv) > 1 else "postgresql://parking:parking@localhost:5432/parking_db"
+DATABASE_URL = sys.argv[1] if len(sys.argv) > 1 else "postgresql://parking:parking@localhost:5433/parking_db"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 nome = input("Nome: ")

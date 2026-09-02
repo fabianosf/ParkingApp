@@ -9,6 +9,7 @@ import AdminHistorico from './pages/AdminHistorico';
 import AdminVeiculos from './pages/AdminVeiculos';
 import Cadastro from './pages/Cadastro';
 import Login from './pages/Login';
+import MotoristaHistorico from './pages/MotoristaHistorico';
 import MotoristaMeuVeiculo from './pages/MotoristaMeuVeiculo';
 import Perfil from './pages/Perfil';
 import RecuperarSenha1 from './pages/RecuperarSenha1';
@@ -65,6 +66,7 @@ export default function App() {
         <Route element={<ProtectedRoute requiredRole="MOTORISTA" />}>
           <Route element={<TabLayout tabs={driverTabs} />}>
             <Route path="/motorista/veiculo" element={<MotoristaMeuVeiculo />} />
+            <Route path="/motorista/historico" element={<MotoristaHistorico />} />
             <Route path="/motorista/perfil" element={<Perfil />} />
           </Route>
         </Route>

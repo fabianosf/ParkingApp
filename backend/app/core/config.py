@@ -7,7 +7,7 @@ from sqlalchemy.engine.url import URL
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://parking:parking@localhost:5432/parking_db"
+    DATABASE_URL: str = "postgresql://parking:parking@localhost:5433/parking_db"
 
     # Supabase (opcional — se preenchidos, montam DATABASE_URL automaticamente)
     SUPABASE_URL: str = ""
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_ANON_KEY: str = ""
 
-    SECRET_KEY: str = "change-me-in-production-use-a-long-random-string"
+    SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     MAIL_SSL_TLS: bool = False
     MAIL_USE_CREDENTIALS: bool = True
 
-    ADMIN_CPF: str = "05721845732"
-    ADMIN_SENHA: str = "260281xx"
+    ADMIN_CPF: str = ""
+    ADMIN_SENHA: str = "CHANGE_ME_ADMIN_PASSWORD"
     ADMIN_NOME: str = "Administrador"
     ADMIN_EMAIL: str = "admin@parking.local"
 
@@ -59,19 +59,25 @@ class Settings(BaseSettings):
                 url = url.replace("postgresql://", "postgresql+psycopg://", 1)
             return make_url(url)
 
-        if self.SUPABASE_PROJECT_REF and self.SUPABASE_DB_PASSWORD:
+        # Ignora placeholders do .env.example (ex.: SEU_PROJECT_REF)
+        project_ref = (self.SUPABASE_PROJECT_REF or "").strip()
+        db_password = (self.SUPABASE_DB_PASSWORD or "").strip()
+        placeholder_refs = {"", "SEU_PROJECT_REF", "seu_project_ref_aqui"}
+        placeholder_passwords = {"", "sua-senha-do-banco", "sua_senha_real"}
+
+        if project_ref and project_ref not in placeholder_refs and db_password not in placeholder_passwords:
             if self.SUPABASE_USE_POOLER:
                 host = self.SUPABASE_DB_HOST or "aws-0-us-east-1.pooler.supabase.com"
-                username = f"postgres.{self.SUPABASE_PROJECT_REF}"
+                username = f"postgres.{project_ref}"
                 port = 6543
             else:
-                host = self.SUPABASE_DB_HOST or f"db.{self.SUPABASE_PROJECT_REF}.supabase.co"
+                host = self.SUPABASE_DB_HOST or f"db.{project_ref}.supabase.co"
                 username = "postgres"
                 port = 5432
             return URL.create(
                 drivername="postgresql+psycopg",
                 username=username,
-                password=self.SUPABASE_DB_PASSWORD,
+                password=db_password,
                 host=host,
                 port=port,
                 database="postgres",
@@ -85,7 +91,9 @@ class Settings(BaseSettings):
     @property
     def uses_supabase(self) -> bool:
         url = self.resolved_database_url
-        return "supabase" in url or bool(self.SUPABASE_PROJECT_REF)
+        project_ref = (self.SUPABASE_PROJECT_REF or "").strip()
+        placeholder_refs = {"", "SEU_PROJECT_REF", "seu_project_ref_aqui"}
+        return "supabase" in url or (project_ref not in placeholder_refs)
 
 
 settings = Settings()

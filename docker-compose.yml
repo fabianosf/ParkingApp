@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: parking
       POSTGRES_DB: parking_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,11 +21,11 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://parking:parking@db:5432/parking_db
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173,http://127.0.0.1:8080}
-      ADMIN_CPF: ${ADMIN_CPF:-05721845732}
-      ADMIN_SENHA: ${ADMIN_SENHA:-260281xx}
+      ADMIN_CPF: ${ADMIN_CPF:-}
+      ADMIN_SENHA: ${ADMIN_SENHA:-CHANGE_ME_ADMIN_PASSWORD}
       ADMIN_NOME: ${ADMIN_NOME:-Administrador}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@parking.local}
       MAIL_USERNAME: ${MAIL_USERNAME:-}

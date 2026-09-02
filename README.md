@@ -61,19 +61,30 @@ ParkingApp/
 - Node.js 18+ (para o mobile)
 - Python 3.12+ (opcional, para rodar backend local sem Docker)
 
-## Rodar localmente com Supabase (recomendado)
+## Rodar localmente (recomendado)
 
-**Arquitetura:** API + Mobile na sua máquina | Banco no Supabase (nuvem).
+1. Copie os exemplos de ambiente e preencha os valores locais:
 
-### 1. Supabase — restaurar projeto
+```powershell
+copy backend\.env.example backend\.env
+copy .env.docker.example .env
+```
 
-1. Abra o [dashboard](https://supabase.com/dashboard/project/ugkwzsfezarwqdpinpci)
-2. Se estiver **pausado**, clique em **Restore project** e aguarde ~2 min
-3. Em **Database → Connection string → URI** (Session pooler), copie a URI
-4. Cole em `backend/.env` como `DATABASE_URL=postgresql+psycopg://...`  
-   (substitua `[YOUR-PASSWORD]` por `Parking2026Secure`)
+Defina no mínimo `SECRET_KEY`, `ADMIN_CPF` e `ADMIN_SENHA` no `backend/.env`.
 
-### 2. Backend (terminal 1)
+### Opção A — Postgres local via Docker
+
+```powershell
+docker compose up db -d
+```
+
+### Opção B — Supabase
+
+1. Abra o dashboard do seu projeto Supabase
+2. Em **Database → Connection string → URI**, copie a URI
+3. Cole em `backend/.env` como `DATABASE_URL=postgresql+psycopg://...`
+
+### Backend (terminal 1)
 
 ```powershell
 cd backend
@@ -82,9 +93,17 @@ alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Na primeira subida, o **admin padrão** é criado automaticamente (ver `.env`: `ADMIN_CPF`, `ADMIN_SENHA`).
+Na primeira subida, o **admin** é criado automaticamente se `ADMIN_CPF` e `ADMIN_SENHA` estiverem definidos no `.env`.
 
-### 3. Mobile (terminal 2)
+### Mobile / Web (terminal 2)
+
+```powershell
+cd web
+npm install
+npm run dev
+```
+
+Ou mobile:
 
 ```powershell
 cd mobile
@@ -94,10 +113,10 @@ npx expo start
 
 No `.env` do mobile: `EXPO_PUBLIC_API_URL=http://SEU_IP:8000` (celular) ou `http://localhost:8000` (emulador).
 
-### 4. Login
+### Login
 
 - **Campo:** CPF + senha (não usa email no login)
-- **Admin padrão:** CPF `057.218.457-32` | senha definida em `ADMIN_SENHA` no `.env`
+- **Admin:** use o CPF/senha definidos em `ADMIN_CPF` / `ADMIN_SENHA` no `.env`
 
 ---
 
@@ -117,7 +136,7 @@ docker compose up --build
 |---------|-----|
 | **App (PWA)** | http://localhost:8080 |
 | **API / Swagger** | http://localhost:8000/docs |
-| **PostgreSQL** | localhost:5432 (user: `parking`, pass: `parking`, db: `parking_db`) |
+| **PostgreSQL** | localhost:5433 (user: `parking`, pass: `parking`, db: `parking_db`) |
 
 O container `web` (nginx) serve o frontend e faz proxy da API na mesma origem — sem CORS no navegador.
 
@@ -141,6 +160,115 @@ Configure `backend/.env` com `DATABASE_URL` ou credenciais Supabase antes de sub
 
 ---
 
+## Deploy no VPS (acessar no celular)
+
+### 1. Preparar o VPS (Ubuntu 22/24)
+
+```bash
+# SSH no servidor
+ssh root@SEU_IP_VPS
+
+# Instalar Docker
+curl -fsSL https://get.docker.com | sh
+apt install -y git
+
+# Clonar projeto
+git clone https://github.com/fabianosf/ParkingApp.git
+cd ParkingApp
+```
+
+### 2. Configurar variáveis
+
+```bash
+cp .env.docker.example .env
+nano .env
+```
+
+Ajuste no mínimo:
+
+```env
+SECRET_KEY=change-me-in-production
+POSTGRES_PASSWORD=CHANGE_ME_DB_PASSWORD
+ADMIN_CPF=
+ADMIN_SENHA=CHANGE_ME_ADMIN_PASSWORD
+
+# Troque pelo IP público do VPS
+FRONTEND_URL=http://SEU_IP_VPS
+CORS_ORIGINS=http://SEU_IP_VPS
+```
+
+### 3. Subir a aplicação
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Aguarde ~2 min. Verifique:
+
+```bash
+docker compose ps
+curl http://localhost/health
+```
+
+### 4. Liberar firewall
+
+No painel do VPS ou via UFW:
+
+```bash
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow OpenSSH
+ufw enable
+```
+
+**Não** exponha a porta `5432` (Postgres) na internet.
+
+### 5. Abrir no celular
+
+No navegador do celular (Chrome/Safari), acesse:
+
+```
+http://IP_DO_VPS
+```
+
+Ex.: `http://123.45.67.89`
+
+Funciona com **4G/Wi‑Fi** — o app fica público na internet.
+
+Para **instalar como PWA** (ícone na tela inicial), prefira **HTTPS com domínio** (passo 6).
+
+### 6. (Recomendado) Domínio + HTTPS
+
+1. Compre/use um domínio (ex.: `estacionamento.suaempresa.com.br`)
+2. Crie um registro **A** apontando para o IP do VPS
+3. No `.env`:
+
+```env
+DOMAIN=estacionamento.suaempresa.com.br
+FRONTEND_URL=https://estacionamento.suaempresa.com.br
+CORS_ORIGINS=https://estacionamento.suaempresa.com.br
+```
+
+4. Suba com Caddy (certificado automático):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.https.yml up -d --build
+```
+
+5. No celular: `https://estacionamento.suaempresa.com.br`
+
+### 7. Atualizar depois
+
+```bash
+cd ParkingApp
+git pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+(Adicione `-f docker-compose.https.yml` se usar HTTPS.)
+
+---
+
 ## Rodar com Docker (legado — só API + Postgres)
 
 ```bash
@@ -150,7 +278,7 @@ docker compose up db api --build
 A API ficará disponível em:
 - **API:** http://localhost:8000
 - **Swagger Docs:** http://localhost:8000/docs
-- **PostgreSQL:** localhost:5432 (user: parking, pass: parking, db: parking_db)
+- **PostgreSQL:** localhost:5433 (user: parking, pass: parking, db: parking_db)
 
 Para o PWA, use `npm run dev` em `web/` ou suba o serviço `web` conforme seção acima.
 
@@ -206,8 +334,8 @@ Escaneie o QR code com o app Expo Go ou pressione `a` (Android) / `i` (iOS).
 |---|------|--------|
 | 1 | Login | Todos |
 | 2 | Cadastro | Todos |
-| 3 | Recuperar Senha (email) | Todos |
-| 4 | Recuperar Senha (token) | Todos |
+| 3 | Recuperar Senha (CPF) | Todos |
+| 4 | Redefinir Senha (token) | Todos |
 | 5 | Dashboard (vagas, entrada/saída) | ADMIN |
 | 6 | Veículos & Colaboradores (CRUD) | ADMIN |
 | 7 | Histórico (filtros) | ADMIN |

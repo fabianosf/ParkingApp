@@ -94,9 +94,16 @@ def list_records(
             db.query(ParkingRecord)
             .options(joinedload(ParkingRecord.vehicle).joinedload(Vehicle.owner))
             .join(Vehicle)
-            .filter(Vehicle.owner_id == current_user.id, ParkingRecord.status == ParkingStatus.NO_PATIO)
+            .filter(Vehicle.owner_id == current_user.id)
         )
         if vehicle_id:
+            own_vehicle = (
+                db.query(Vehicle)
+                .filter(Vehicle.id == vehicle_id, Vehicle.owner_id == current_user.id)
+                .first()
+            )
+            if own_vehicle is None:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão insuficiente")
             query = query.filter(ParkingRecord.vehicle_id == vehicle_id)
         records = query.order_by(ParkingRecord.data_entrada.desc()).all()
         return [_record_response(r) for r in records]
@@ -125,42 +132,65 @@ def register_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    vehicle = db.query(Vehicle).filter(Vehicle.id == data.vehicle_id, Vehicle.excluido_em.is_(None)).first()
-    if vehicle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado")
+    try:
+        config = db.query(ParkingConfig).with_for_update().first()
+        if config is None:
+            config = ParkingConfig(capacidade_maxima=50)
+            db.add(config)
+            db.flush()
+            config = db.query(ParkingConfig).with_for_update().filter(ParkingConfig.id == config.id).first()
 
-    active = (
-        db.query(ParkingRecord)
-        .filter(ParkingRecord.vehicle_id == data.vehicle_id, ParkingRecord.status == ParkingStatus.NO_PATIO)
-        .first()
-    )
-    if active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Veículo já possui registro ativo no pátio",
+        vehicle = (
+            db.query(Vehicle)
+            .filter(Vehicle.id == data.vehicle_id, Vehicle.excluido_em.is_(None))
+            .first()
         )
+        if vehicle is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado")
 
-    config = _get_config(db)
-    ocupadas = db.query(ParkingRecord).filter(ParkingRecord.status == ParkingStatus.NO_PATIO).count()
-    if ocupadas >= config.capacidade_maxima:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pátio lotado. Capacidade máxima atingida.")
+        active = (
+            db.query(ParkingRecord)
+            .filter(
+                ParkingRecord.vehicle_id == data.vehicle_id,
+                ParkingRecord.status == ParkingStatus.NO_PATIO,
+            )
+            .first()
+        )
+        if active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Veículo já possui registro ativo no pátio",
+            )
 
-    record = ParkingRecord(
-        vehicle_id=data.vehicle_id,
-        data_entrada=datetime.now(timezone.utc),
-        registrado_por=current_user.id,
-        status=ParkingStatus.NO_PATIO,
-    )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-    record = (
-        db.query(ParkingRecord)
-        .options(joinedload(ParkingRecord.vehicle).joinedload(Vehicle.owner))
-        .filter(ParkingRecord.id == record.id)
-        .first()
-    )
-    return _record_response(record)
+        ocupadas = db.query(ParkingRecord).filter(ParkingRecord.status == ParkingStatus.NO_PATIO).count()
+        if ocupadas >= config.capacidade_maxima:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pátio lotado. Capacidade máxima atingida.",
+            )
+
+        record = ParkingRecord(
+            vehicle_id=data.vehicle_id,
+            data_entrada=datetime.now(timezone.utc),
+            registrado_por=current_user.id,
+            status=ParkingStatus.NO_PATIO,
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        record = (
+            db.query(ParkingRecord)
+            .options(joinedload(ParkingRecord.vehicle).joinedload(Vehicle.owner))
+            .filter(ParkingRecord.id == record.id)
+            .first()
+        )
+        return _record_response(record)
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.post("/exit", response_model=ParkingRecordResponse)

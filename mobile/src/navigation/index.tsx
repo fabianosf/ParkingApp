@@ -17,13 +17,14 @@ import AdminVehiclesScreen from '../screens/AdminVehiclesScreen';
 import AdminHistoryScreen from '../screens/AdminHistoryScreen';
 import AdminConfigScreen from '../screens/AdminConfigScreen';
 import DriverVehicleScreen from '../screens/DriverVehicleScreen';
+import DriverHistoryScreen from '../screens/DriverHistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
-import { AdminTabParamList, AuthStackParamList } from './types';
+import { AdminTabParamList, AuthStackParamList, DriverTabParamList } from './types';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AdminTab = createBottomTabNavigator<AdminTabParamList>();
-const DriverTab = createBottomTabNavigator();
+const DriverTab = createBottomTabNavigator<DriverTabParamList>();
 
 function AuthNavigator() {
   return (
@@ -68,6 +69,7 @@ function DriverNavigator() {
       }}
     >
       <DriverTab.Screen name="MyVehicle" component={DriverVehicleScreen} options={{ title: 'Meu Veículo' }} />
+      <DriverTab.Screen name="MyHistory" component={DriverHistoryScreen} options={{ title: 'Histórico' }} />
       <DriverTab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
     </DriverTab.Navigator>
   );

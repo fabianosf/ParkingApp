@@ -23,7 +23,7 @@ type Props = {
 };
 
 export default function ResetPasswordScreen({ navigation, route }: Props) {
-  const token = route.params?.token ?? '';
+  const [token, setToken] = useState(route.params?.token ?? '');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [error, setError] = useState('');
@@ -41,7 +41,7 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
 
   const handleSubmit = async () => {
     setError('');
-    if (!token.trim()) return setError('Link inválido. Solicite a recuperação novamente.');
+    if (!token.trim()) return setError('Informe o token recebido.');
     if (!isPasswordPolicyValid(novaSenha)) return setError(getPasswordPolicyMessage(novaSenha));
     if (novaSenha !== confirmar) return setError('Senhas não conferem');
 
@@ -61,26 +61,22 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
     }
   };
 
-  if (!token.trim()) {
-    return (
-      <ScreenContainer keyboard>
-        <ScreenHeader title="Link inválido" subtitle="Solicite a recuperação de senha novamente." />
-        <LinkButton title="Recuperar senha" onPress={() => navigation.navigate('ForgotPassword')} />
-        <LinkButton title="Voltar ao login" onPress={() => navigation.navigate('Login')} />
-      </ScreenContainer>
-    );
-  }
-
   return (
     <ScreenContainer keyboard>
       <ScreenHeader
         title="Cadastrar nova senha"
-        subtitle="Sua senha anterior foi bloqueada. Defina uma nova conforme a política da empresa."
+        subtitle="Use o token do e-mail/link e defina uma nova senha conforme a política da empresa."
       />
 
       {error ? <MessageText text={error} type="error" /> : null}
       {message ? <MessageText text={message} type="success" /> : null}
 
+      <AppInput
+        label="Token"
+        placeholder="Cole o token recebido"
+        value={token}
+        onChangeText={setToken}
+      />
       <AppInput
         label="Nova senha"
         placeholder="Nova senha"
