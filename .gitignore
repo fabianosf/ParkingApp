@@ -4,6 +4,7 @@ __pycache__/
 .env.*
 !.env.example
 !.env.docker.example
+!ambiente.example
 mobile/.env
 backend/.env
 venv/
@@ -25,3 +26,11 @@ web-build/
 
 .DS_Store
 Thumbs.db
+
+# SQLite local
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+parking_local.db
+

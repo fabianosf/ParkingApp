@@ -1,0 +1,15 @@
+# Qual ambiente a aplicação deve usar?
+# Opções: local | postgres | docker | production
+#
+# local      → SQLite (arquivo backend/parking_local.db) — sem Docker
+# postgres   → Postgres em localhost:5433 (docker compose up db -d)
+# docker     → API dentro do compose (host do banco = db:5432)
+# production → usa variáveis do .env / servidor (sem default de SQLite)
+#
+# Como usar: troque a linha abaixo e reinicie o backend.
+
+local
+#
+
+
+

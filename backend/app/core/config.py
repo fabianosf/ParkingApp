@@ -1,13 +1,18 @@
-from urllib.parse import quote_plus
+from pathlib import Path
 
-from sqlalchemy.engine import make_url
-
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
+from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
+
+from app.core.environment import detect_environment, profile_defaults
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://parking:parking@localhost:5433/parking_db"
+    # local | postgres | docker | production
+    APP_ENV: str = "local"
+
+    DATABASE_URL: str = ""
 
     # Supabase (opcional — se preenchidos, montam DATABASE_URL automaticamente)
     SUPABASE_URL: str = ""
@@ -47,19 +52,45 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
+    @model_validator(mode="before")
+    @classmethod
+    def apply_environment_profile(cls, data: dict) -> dict:
+        if not isinstance(data, dict):
+            data = {}
+
+        env = (data.get("APP_ENV") or detect_environment()).strip().lower()
+        data["APP_ENV"] = env
+
+        for key, value in profile_defaults(env).items():
+            current = data.get(key)
+            if current is None or current == "":
+                data[key] = value
+
+        # Garante DATABASE_URL mesmo se profile não setou (production sem .env)
+        if not data.get("DATABASE_URL"):
+            data["DATABASE_URL"] = profile_defaults("local")["DATABASE_URL"]
+
+        return data
+
+    @property
+    def uses_sqlite(self) -> bool:
+        return self.DATABASE_URL.strip().lower().startswith("sqlite")
+
     @property
     def resolved_database_url(self) -> str:
         return str(self.resolved_database_url_object)
 
     @property
     def resolved_database_url_object(self) -> URL:
+        if self.uses_sqlite:
+            return make_url(self.DATABASE_URL)
+
         if self.DATABASE_URL and "supabase" in self.DATABASE_URL:
             url = self.DATABASE_URL
             if url.startswith("postgresql://") and "+psycopg" not in url:
                 url = url.replace("postgresql://", "postgresql+psycopg://", 1)
             return make_url(url)
 
-        # Ignora placeholders do .env.example (ex.: SEU_PROJECT_REF)
         project_ref = (self.SUPABASE_PROJECT_REF or "").strip()
         db_password = (self.SUPABASE_DB_PASSWORD or "").strip()
         placeholder_refs = {"", "SEU_PROJECT_REF", "seu_project_ref_aqui"}
@@ -90,6 +121,8 @@ class Settings(BaseSettings):
 
     @property
     def uses_supabase(self) -> bool:
+        if self.uses_sqlite:
+            return False
         url = self.resolved_database_url
         project_ref = (self.SUPABASE_PROJECT_REF or "").strip()
         placeholder_refs = {"", "SEU_PROJECT_REF", "seu_project_ref_aqui"}

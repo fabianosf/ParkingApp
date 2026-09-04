@@ -1,0 +1,6 @@
+# Copie para ambiente.txt na raiz do projeto e escolha um valor:
+#   copy ambiente.example ambiente.txt
+#
+# local | postgres | docker | production
+
+local

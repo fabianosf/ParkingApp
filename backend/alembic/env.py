@@ -36,8 +36,13 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    os.environ.setdefault("PGCLIENTENCODING", "UTF8")
-    connect_args = {"sslmode": "require", "client_encoding": "utf8"} if settings.uses_supabase else {}
+    connect_args: dict = {}
+    if settings.uses_sqlite:
+        connect_args = {"check_same_thread": False}
+    elif settings.uses_supabase:
+        os.environ.setdefault("PGCLIENTENCODING", "UTF8")
+        connect_args = {"sslmode": "require", "client_encoding": "utf8"}
+
     connectable = create_engine(
         database_url,
         connect_args=connect_args,

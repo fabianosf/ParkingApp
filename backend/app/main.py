@@ -5,12 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
+from app.core.database import init_db
 from app.core.seed import run_seed
 from app.routers import auth, parking_config, parking_records, users, vehicles
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.uses_sqlite:
+        init_db()
     run_seed()
     yield
 
@@ -44,4 +47,8 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "environment": settings.APP_ENV,
+        "database": "sqlite" if settings.uses_sqlite else "postgres",
+    }

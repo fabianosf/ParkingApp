@@ -61,41 +61,45 @@ ParkingApp/
 - Node.js 18+ (para o mobile)
 - Python 3.12+ (opcional, para rodar backend local sem Docker)
 
-## Rodar localmente (recomendado)
+## Escolher o ambiente (`ambiente.txt`)
 
-1. Copie os exemplos de ambiente e preencha os valores locais:
+Na raiz do projeto existe o arquivo **`ambiente.txt`**. A API lê esse arquivo na subida e monta o banco automaticamente:
+
+| Valor em `ambiente.txt` | Banco |
+|-------------------------|--------|
+| `local` | SQLite (`backend/parking_local.db`) — sem Docker |
+| `postgres` | Postgres em `localhost:5433` |
+| `docker` | Postgres do compose (`db:5432`) |
+| `production` | Postgres de produção (use `DATABASE_URL` no `.env`) |
+
+Troque só a palavra no arquivo e **reinicie** o backend. Confira em http://localhost:8000/health (`environment` + `database`).
+
+`APP_ENV` / `DATABASE_URL` no `.env` ou no sistema ainda têm prioridade se estiverem preenchidos.
+
+## Rodar localmente (recomendado — SQLite, sem Docker)
+
+1. Deixe `ambiente.txt` com `local`.
+2. Copie o ambiente do backend:
 
 ```powershell
-copy backend\.env.example backend\.env
-copy .env.docker.example .env
+cd backend
+copy .env.example .env
 ```
 
-Defina no mínimo `SECRET_KEY`, `ADMIN_CPF` e `ADMIN_SENHA` no `backend/.env`.
+Ajuste `ADMIN_CPF` / `ADMIN_SENHA` no `.env`. Deixe `DATABASE_URL=` vazio para seguir o `ambiente.txt`.
 
-### Opção A — Postgres local via Docker
-
-```powershell
-docker compose up db -d
-```
-
-### Opção B — Supabase
-
-1. Abra o dashboard do seu projeto Supabase
-2. Em **Database → Connection string → URI**, copie a URI
-3. Cole em `backend/.env` como `DATABASE_URL=postgresql+psycopg://...`
-
-### Backend (terminal 1)
+3. Backend (terminal 1):
 
 ```powershell
 cd backend
 pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+$env:PYTHONPATH="."
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Na primeira subida, o **admin** é criado automaticamente se `ADMIN_CPF` e `ADMIN_SENHA` estiverem definidos no `.env`.
+Na primeira subida o SQLite cria as tabelas automaticamente e o admin do `.env`.
 
-### Mobile / Web (terminal 2)
+4. Frontend (terminal 2):
 
 ```powershell
 cd web
@@ -103,20 +107,17 @@ npm install
 npm run dev
 ```
 
-Ou mobile:
+App: http://localhost:5173  
+API: http://localhost:8000/docs
 
-```powershell
-cd mobile
-npm install
-npx expo start
-```
+### Login (exemplo local)
 
-No `.env` do mobile: `EXPO_PUBLIC_API_URL=http://SEU_IP:8000` (celular) ou `http://localhost:8000` (emulador).
+- CPF: o valor de `ADMIN_CPF` no `.env`
+- Senha: o valor de `ADMIN_SENHA` no `.env`
 
-### Login
+### Postgres / Supabase (opcional)
 
-- **Campo:** CPF + senha (não usa email no login)
-- **Admin:** use o CPF/senha definidos em `ADMIN_CPF` / `ADMIN_SENHA` no `.env`
+Coloque `postgres` em `ambiente.txt` (ou preencha `DATABASE_URL` no `.env`) e rode `alembic upgrade head`.
 
 ---
 
